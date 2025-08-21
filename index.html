@@ -4,9 +4,18 @@
   <meta charset="utf-8" />
   <title>Salas O'Brien Offices Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <!-- Mapbox -->
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+  
+  <!-- html2canvas for export -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  
+  <!-- Pickr (Color Picker) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/classic.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
+  
   <style>
     body { margin:0; padding:0; }
     #map { position:absolute; top:0; bottom:0; width:100%; }
@@ -21,7 +30,7 @@
     .subhead { font-weight:normal; font-size:12px; display:block; margin-top:-2px;}
     select { margin:5px 0; width:100%; }
     button { margin:5px 0; padding:5px 10px; width:100%; }
-    input[type="file"], input[type="color"] { margin:5px 0; width:100%; }
+    input[type="file"] { margin:5px 0; width:100%; }
     .mapboxgl-popup { font-family: sans-serif; font-size: 13px; }
     .mapboxgl-popup-content { white-space: pre-line; }
   </style>
@@ -42,7 +51,9 @@
   <input type="file" id="csvUpload" accept=".csv"><br>
 <br>
   <label>Marker Color <br><span style="font-weight:normal; font-size:12px;">(for uploaded addresses)</span></label><br>
-  <input type="color" id="colorPicker" value="#000086"><br>
+<div id="color-picker"></div>
+  
+  <br>
 <br>
   <button id="revertMap">Revert to Original Map</button>
 <br>
@@ -214,16 +225,10 @@
               id: uploadedLayerId,
               type: "circle",
               source: uploadedLayerId,
-              paint: { "circle-radius": 6, "circle-color": document.getElementById('colorPicker').value }
+              paint: { "circle-radius": 6, "circle-color": '#000086' }
             });
 
-            // Update uploaded marker colors when the color picker changes
-document.getElementById('colorPicker').addEventListener('input', (e) => {
-  const newColor = e.target.value;
-  if (map.getLayer(uploadedLayerId)) {
-    map.setPaintProperty(uploadedLayerId, 'circle-color', newColor);
-  }
-});
+;
 
 
             map.on('mouseenter', uploadedLayerId, (e) => {
@@ -273,9 +278,32 @@ document.getElementById('revertMap').addEventListener('click', () => {
       console.error('Error loading dataset:', err);
     }
   });
+ const pickr = Pickr.create({
+  el: '#color-picker',
+  theme: 'classic',
+  default: '#000086',
+  components: {
+    preview: true,
+    opacity: false,
+    hue: true,
+    interaction: { hex: true, input: true, save: true }
+  }
+});
+
+pickr.on('save', (color) => {
+  const newColor = color.toHEXA().toString();
+  if (map.getLayer(uploadedLayerId)) {
+    map.setPaintProperty(uploadedLayerId, 'circle-color', newColor);
+  }
+});
+// --- END PICKR INIT ---
+
+}); // end of map.on('load') 
+  
 </script>
 </body>
 </html>
+
 
 
 
