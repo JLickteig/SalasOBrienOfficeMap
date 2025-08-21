@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <style>
     body { margin:0; padding:0; }
     #map { position:absolute; top:0; bottom:0; width:100%; }
@@ -17,17 +18,19 @@
       max-width:260px;
     }
     label { font-weight:bold; }
+    .subhead { font-weight:normal; font-size:12px; display:block; margin-top:-2px; margin-bottom:5px; }
     select { margin:5px 0; width:100%; }
     button { margin:5px 0; padding:5px 10px; width:100%; }
-    input[type="file"], input[type="color"] { margin:5px 0; width:100%; }
+    input[type="file"], input[type="color"], input[type="text"] { margin:5px 0; width:100%; }
     .mapboxgl-popup { font-family: sans-serif; font-size: 13px; }
     .mapboxgl-popup-content { white-space: pre-line; }
   </style>
 </head>
 <body>
 <div id="filters">
-  <label>Filter by State/Province</label><br>
-  <select id="regionFilter" multiple size="10" title="Hold Shift to select multiple regions"></select><br>
+  <label>Filter by State/Province</label>
+  <span class="subhead">(hold Ctrl + click to select multiple states/provinces)</span>
+  <select id="regionFilter" multiple size="10"></select><br>
 
   <label>Filter by Business Unit</label><br>
   <select id="buFilter" multiple size="5"></select><br>
@@ -40,7 +43,7 @@
 
   <label>Marker Color <br><span style="font-weight:normal; font-size:12px;">(for uploaded addresses)</span></label><br>
   <input type="color" id="colorPicker" value="#000086"><br>
-  <span id="colorHex" style="font-size:12px; font-family:monospace;">#000086</span><br>
+  <input type="text" id="hexInput" value="#000086" maxlength="7" style="font-family:monospace; font-size:12px;"><br>
 
   <button id="revertMap">Revert to Original Map</button>
   <hr>
@@ -119,7 +122,7 @@
       }
 
       function applyFilters() {
-        const selectedRegions = getSelectedValues(regionSelect); // ["US|Alabama","CAN|Ontario"]
+        const selectedRegions = getSelectedValues(regionSelect); 
         const selectedBUs = getSelectedValues(buSelect);
 
         const filtered = {
@@ -228,32 +231,47 @@
         });
       });
 
-      // Color picker live updates uploaded markers
+      // Color picker + HEX input sync
       const colorInput = document.getElementById('colorPicker');
-      const colorHex = document.getElementById('colorHex');
-      colorInput.addEventListener('input', () => {
-        colorHex.textContent = colorInput.value.toUpperCase();
+      const hexInput = document.getElementById('hexInput');
+
+      function updateColor(val) {
+        hexInput.value = val.toUpperCase();
         if (map.getLayer(uploadedLayerId)) {
-          map.setPaintProperty(uploadedLayerId, 'circle-color', colorInput.value);
+          map.setPaintProperty(uploadedLayerId, 'circle-color', val);
+        }
+      }
+
+      colorInput.addEventListener('input', () => updateColor(colorInput.value));
+      hexInput.addEventListener('input', () => {
+        const val = hexInput.value;
+        if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+          colorInput.value = val;
+          updateColor(val);
         }
       });
 
-      // Revert to original map
+      // Revert to original map (also clears filters)
       document.getElementById('revertMap').addEventListener('click', () => {
         if (map.getLayer(uploadedLayerId)) {
           map.removeLayer(uploadedLayerId);
           map.removeSource(uploadedLayerId);
         }
+        regionSelect.selectedIndex = -1;
+        buSelect.selectedIndex = -1;
+        map.getSource('offices').setData(originalGeojson);
       });
 
-      // Export to PNG
+      // Export to PNG (captures everything in #map)
       document.getElementById('exportMap').addEventListener('click', () => {
-        const canvas = map.getCanvas();
-        const img = canvas.toDataURL("image/png");
-        const link = document.createElement('a');
-        link.href = img;
-        link.download = "map-export.png";
-        link.click();
+        const mapContainer = document.getElementById('map');
+        html2canvas(mapContainer, { useCORS: true }).then(canvas => {
+          const img = canvas.toDataURL("image/png");
+          const link = document.createElement('a');
+          link.href = img;
+          link.download = "map-export.png";
+          link.click();
+        });
       });
 
     } catch (err) {
