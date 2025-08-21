@@ -49,6 +49,7 @@
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 <script>
   mapboxgl.accessToken = 'pk.eyJ1IjoiamFjcXVlbGlja3RlaWciLCJhIjoiY21lZDF0aXE0MDVrYzJpcGxxYWJjcjBkaCJ9.FCV2mpRq2iULMEZJbBi0Iw';
+  const GOOGLE_MAPS_KEY = "AIzaSyBdVVKVelSKtsN9F6wTh-S57j-r1TbvNXw";
 
   const map = new mapboxgl.Map({
     container: 'map',
@@ -72,10 +73,7 @@
         id: 'offices-layer',
         type: 'circle',
         source: 'offices',
-        paint: {
-          'circle-radius': 6,
-          'circle-color': '#009de0'
-        }
+        paint: { 'circle-radius': 6, 'circle-color': '#009de0' }
       });
 
       const stateSelect = document.getElementById('stateFilter');
@@ -105,24 +103,11 @@
             const props = f.properties;
             let match = true;
 
-            // States filter
-            if (selectedStates.length > 0) {
-              if (props.country !== "US" || !selectedStates.includes(props.state)) {
-                match = false;
-              }
-            }
-
-            // Provinces filter
-            if (selectedProvinces.length > 0) {
-              if (props.country !== "CAN" || !selectedProvinces.includes(props.state)) {
-                match = false;
-              }
-            }
-
-            // BU filter
-            if (selectedBUs.length > 0 && !selectedBUs.includes(props.bu)) {
-              match = false;
-            }
+            if (selectedStates.length > 0 && props.country === "US" && !selectedStates.includes(props.state)) match = false;
+            if (selectedProvinces.length > 0 && props.country === "CAN" && !selectedProvinces.includes(props.state)) match = false;
+            if (selectedStates.length > 0 && props.country === "CAN") match = false; // hide Canada when states are picked
+            if (selectedProvinces.length > 0 && props.country === "US") match = false; // hide US when provinces are picked
+            if (selectedBUs.length > 0 && !selectedBUs.includes(props.bu)) match = false;
 
             return match;
           })
@@ -130,33 +115,14 @@
         map.getSource('offices').setData(filtered);
       }
 
-      // Event listeners
-      stateSelect.addEventListener('change', () => {
-        if (getSelectedValues(stateSelect).length > 0) {
-          provinceSelect.disabled = true;
-        } else {
-          provinceSelect.disabled = false;
-        }
-        applyFilters();
-      });
-
-      provinceSelect.addEventListener('change', () => {
-        if (getSelectedValues(provinceSelect).length > 0) {
-          stateSelect.disabled = true;
-        } else {
-          stateSelect.disabled = false;
-        }
-        applyFilters();
-      });
-
+      stateSelect.addEventListener('change', applyFilters);
+      provinceSelect.addEventListener('change', applyFilters);
       buSelect.addEventListener('change', applyFilters);
 
       document.getElementById('clearFilters').addEventListener('click', () => {
         stateSelect.selectedIndex = -1;
         provinceSelect.selectedIndex = -1;
         buSelect.selectedIndex = -1;
-        stateSelect.disabled = false;
-        provinceSelect.disabled = false;
         map.getSource('offices').setData(originalGeojson);
       });
 
@@ -169,7 +135,7 @@
       });
       map.on('mouseleave', 'offices-layer', () => { map.getCanvas().style.cursor = ''; popup.remove(); });
 
-      // Upload CSV
+      // Upload CSV with geocoding
       document.getElementById('csvUpload').addEventListener('change', function(e){
         const file = e.target.files[0];
         if (!file) return;
@@ -177,12 +143,41 @@
 
         Papa.parse(file, {
           header: true,
-          complete: function(results) {
-            const features = results.data.filter(r => r.lat && r.lng).map(r => ({
-              type: "Feature",
-              geometry: { type: "Point", coordinates: [parseFloat(r.lng), parseFloat(r.lat)] },
-              properties: { officeName: r.officeName, address: r.address, phone: r.phone }
-            }));
+          complete: async function(results) {
+            const features = [];
+
+            for (const row of results.data) {
+              let lat = parseFloat(row.Latitude);
+              let lng = parseFloat(row.Longitude);
+
+              // Geocode if no lat/lng
+              if ((!lat || !lng) && row.ADDRESS) {
+                try {
+                  const response = await fetch(
+                    `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(row.ADDRESS)}&key=${GOOGLE_MAPS_KEY}`
+                  );
+                  const data = await response.json();
+                  if (data.status === "OK") {
+                    lat = data.results[0].geometry.location.lat;
+                    lng = data.results[0].geometry.location.lng;
+                  }
+                } catch (err) {
+                  console.error("Geocoding failed for:", row.ADDRESS, err);
+                }
+              }
+
+              if (lat && lng) {
+                features.push({
+                  type: "Feature",
+                  geometry: { type: "Point", coordinates: [lng, lat] },
+                  properties: {
+                    officeName: row["Client and Project Name"],
+                    address: row.ADDRESS,
+                    state: row["STATE / PROVINCE"]
+                  }
+                });
+              }
+            }
 
             const uploadedGeojson = { type:"FeatureCollection", features };
 
@@ -202,7 +197,7 @@
               map.getCanvas().style.cursor = 'pointer';
               const props = e.features[0].properties;
               popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
-                `<span style="font-weight:bold; color:#009DE0;">${props.officeName || ''}</span><br>${props.address || ''}<br>${props.phone || ''}`
+                `<span style="font-weight:bold; color:#009DE0;">${props.officeName || ''}</span><br>${props.address || ''}`
               ).addTo(map);
             });
             map.on('mouseleave', uploadedLayerId, () => { map.getCanvas().style.cursor = ''; popup.remove(); });
