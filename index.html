@@ -37,6 +37,7 @@
   </style>
 </head>
 <body>
+  
 <div id="filters">
   <label>Filter by State/Province</label>
   <span class="subhead">(hold Ctrl + click to select multiple states/provinces)</span>
@@ -51,25 +52,25 @@
 
   <button id="clearFilters">Clear All Filters</button>
   <br><br>
-  <hr>
-  <br>
-</div>
+  <hr><br>
+
   <label>Additional Addresses</label>
-<span class="subhead">Upload a .csv file of client or project locations</span>
+  <span class="subhead">Upload a .csv file of client or project locations</span>
   <input type="file" id="csvUpload" accept=".csv"><br>
-<a href="#" id="downloadTemplate" style="display:inline-block; margin-top:6px; font-size:13px; text-decoration:underline; color:#009de0; cursor:pointer;">
-  download template
-</a>
-  <br>
-<br>
+  <a href="#" id="downloadTemplate" style="display:inline-block; margin-top:6px; font-size:13px; text-decoration:underline; color:#009de0; cursor:pointer;">
+    download template
+  </a>
+  <br><br>
+
   <label>Marker Color <br><span class="subhead">(for uploaded addresses)</span></label><br>
   <div id="color-picker"></div><br>
-<hr><br>
+  <hr><br>
+
   <button id="revertMap">Revert to Original Map</button>
-<br>
+  <br>
   <button id="exportMap">Export Map as PNG</button>
 </div>
-<div id="map"></div>
+
 
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 <script>
@@ -341,6 +342,7 @@ document.getElementById('downloadTemplate').addEventListener('click', async (e) 
 </script>
 </body>
 </html>
+
 
 
 
