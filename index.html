@@ -15,6 +15,7 @@
   <!-- Pickr (Color Picker) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/classic.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
+
   <style>
     body { margin:0; padding:0; }
     #map { position:absolute; top:0; bottom:0; width:100%; }
@@ -25,11 +26,12 @@
       font-family:sans-serif; z-index:1;
       max-width:260px;
     }
-    label { font-weight:bold; margin-bottom:8px; font-color:#009DEO; }
-    .subhead { font-weight:normal; font-size:12px; display:block; margin-top:-2px;}
+    label { font-weight:bold; margin-bottom:8px; }
+    .subhead { font-weight:normal; font-size:12px; display:block; margin-top:-2px; }
     select { margin:5px 0; width:100%; }
     button { margin:5px 0; padding:5px 10px; width:100%; }
-    input[type="file"], input[type="color"] { margin:5px 0; width:100%; }
+    input[type="file"] { margin:5px 0; width:100%; }
+    #color-picker { margin:5px 0; }
     .mapboxgl-popup { font-family: sans-serif; font-size: 13px; }
     .mapboxgl-popup-content { white-space: pre-line; }
   </style>
@@ -44,14 +46,12 @@
   <select id="buFilter" multiple size="5"></select><br>
 <br>
   <button id="clearFilters">Clear Filters</button>
-<br>
-  <br>
+<br><br>
   <label>Upload CSV of Offices</label><br>
   <input type="file" id="csvUpload" accept=".csv"><br>
 <br>
-  <label>Marker Color <br><span style="font-weight:normal; font-size:12px;">(for uploaded addresses)</span></label><br>
-  <input type="color" id="colorPicker" value="#000086"><br>
-<br>
+  <label>Marker Color <br><span class="subhead">(for uploaded addresses)</span></label><br>
+  <div id="color-picker"></div><br>
   <button id="revertMap">Revert to Original Map</button>
 <br>
   <button id="exportMap">Export Map as PNG</button>
@@ -72,6 +72,31 @@
 
   let originalGeojson = null;
   let uploadedLayerId = "uploaded-layer";
+  let currentMarkerColor = "#000086"; // default color
+
+  // Init Pickr
+  const pickr = Pickr.create({
+    el: '#color-picker',
+    theme: 'classic',
+    default: currentMarkerColor,
+    components: {
+      preview: true,
+      opacity: false,
+      hue: true,
+      interaction: {
+        hex: true,
+        input: true,
+        save: true
+      }
+    }
+  });
+
+  pickr.on('save', (color) => {
+    currentMarkerColor = color.toHEXA().toString();
+    if (map.getLayer(uploadedLayerId)) {
+      map.setPaintProperty(uploadedLayerId, 'circle-color', currentMarkerColor);
+    }
+  });
 
   map.on('load', async () => {
     try {
@@ -222,17 +247,8 @@
               id: uploadedLayerId,
               type: "circle",
               source: uploadedLayerId,
-              paint: { "circle-radius": 6, "circle-color": document.getElementById('colorPicker').value }
+              paint: { "circle-radius": 6, "circle-color": currentMarkerColor }
             });
-
-            // Update uploaded marker colors when the color picker changes
-document.getElementById('colorPicker').addEventListener('input', (e) => {
-  const newColor = e.target.value;
-  if (map.getLayer(uploadedLayerId)) {
-    map.setPaintProperty(uploadedLayerId, 'circle-color', newColor);
-  }
-});
-
 
             map.on('mouseenter', uploadedLayerId, (e) => {
               map.getCanvas().style.cursor = 'pointer';
@@ -246,26 +262,21 @@ document.getElementById('colorPicker').addEventListener('input', (e) => {
         });
       });
 
-      // Revert to original map (also clears filters, resets color and upload)
-document.getElementById('revertMap').addEventListener('click', () => {
-  if (map.getLayer(uploadedLayerId)) {
-    map.removeLayer(uploadedLayerId);
-    map.removeSource(uploadedLayerId);
-  }
-  regionSelect.selectedIndex = -1;
-  buSelect.selectedIndex = -1;
-  document.getElementById('colorPicker').value = "#000086";
-  document.getElementById('csvUpload').value = "";
-  map.getSource('offices').setData(originalGeojson);
+      // Revert to original map
+      document.getElementById('revertMap').addEventListener('click', () => {
+        if (map.getLayer(uploadedLayerId)) {
+          map.removeLayer(uploadedLayerId);
+          map.removeSource(uploadedLayerId);
+        }
+        regionSelect.selectedIndex = -1;
+        buSelect.selectedIndex = -1;
+        pickr.setColor("#000086");
+        currentMarkerColor = "#000086";
+        document.getElementById('csvUpload').value = "";
+        map.getSource('offices').setData(originalGeojson);
+      });
 
-  // Reset uploaded markers to default blue if added back later
-  if (map.getLayer(uploadedLayerId)) {
-    map.setPaintProperty(uploadedLayerId, 'circle-color', '#000086');
-  }
-});
-
-
-      // Export to PNG (captures everything in #map)
+      // Export to PNG
       document.getElementById('exportMap').addEventListener('click', () => {
         const mapContainer = document.getElementById('map');
         html2canvas(mapContainer, { useCORS: true }).then(canvas => {
@@ -284,9 +295,3 @@ document.getElementById('revertMap').addEventListener('click', () => {
 </script>
 </body>
 </html>
-
-
-
-
-
-
