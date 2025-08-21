@@ -218,6 +218,15 @@
               paint: { "circle-radius": 6, "circle-color": document.getElementById('colorPicker').value }
             });
 
+            // Update uploaded marker colors when the color picker changes
+document.getElementById('colorPicker').addEventListener('input', (e) => {
+  const newColor = e.target.value;
+  if (map.getLayer(uploadedLayerId)) {
+    map.setPaintProperty(uploadedLayerId, 'circle-color', newColor);
+  }
+});
+
+
             map.on('mouseenter', uploadedLayerId, (e) => {
               map.getCanvas().style.cursor = 'pointer';
               const props = e.features[0].properties;
@@ -231,17 +240,23 @@
       });
 
       // Revert to original map (also clears filters, resets color and upload)
-      document.getElementById('revertMap').addEventListener('click', () => {
-        if (map.getLayer(uploadedLayerId)) {
-          map.removeLayer(uploadedLayerId);
-          map.removeSource(uploadedLayerId);
-        }
-        regionSelect.selectedIndex = -1;
-        buSelect.selectedIndex = -1;
-        document.getElementById('colorPicker').value = "#000086";
-        document.getElementById('csvUpload').value = "";
-        map.getSource('offices').setData(originalGeojson);
-      });
+document.getElementById('revertMap').addEventListener('click', () => {
+  if (map.getLayer(uploadedLayerId)) {
+    map.removeLayer(uploadedLayerId);
+    map.removeSource(uploadedLayerId);
+  }
+  regionSelect.selectedIndex = -1;
+  buSelect.selectedIndex = -1;
+  document.getElementById('colorPicker').value = "#000086";
+  document.getElementById('csvUpload').value = "";
+  map.getSource('offices').setData(originalGeojson);
+
+  // Reset uploaded markers to default blue if added back later
+  if (map.getLayer(uploadedLayerId)) {
+    map.setPaintProperty(uploadedLayerId, 'circle-color', '#000086');
+  }
+});
+
 
       // Export to PNG (captures everything in #map)
       document.getElementById('exportMap').addEventListener('click', () => {
@@ -262,3 +277,4 @@
 </script>
 </body>
 </html>
+
