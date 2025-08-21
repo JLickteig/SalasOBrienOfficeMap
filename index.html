@@ -40,6 +40,12 @@
 
     .mapboxgl-popup { font-family: sans-serif; font-size: 13px; }
     .mapboxgl-popup-content { white-space: pre-line; }
+    .color-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* space between picker and label */
+}
+
   </style>
 </head>
 <body>
@@ -63,8 +69,15 @@
     </a>
     <br><br>
 
-    <label>Marker Color <br><span class="subhead">(for uploaded addresses)</span></label><br>
-    <div id="color-picker"></div><br>
+    <div class="color-picker-row">
+  <div id="color-picker"></div>
+  <label>
+    Marker Color 
+    <span class="subhead">(for uploaded addresses)</span>
+  </label>
+</div>
+<br>
+
 
     <hr><br>
     <button id="revertMap">Revert to Original Map</button><br>
@@ -355,5 +368,6 @@
   </script>
 </body>
 </html>
+
 
 
