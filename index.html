@@ -36,32 +36,29 @@
 
   const map = new mapboxgl.Map({
     container: 'map',
-    style: 'mapbox://styles/jacquelickteig/cm19xymc400tt01pde8ul6loi', // custom style
-    center: [-98.5795, 39.8283], // USA center
+    style: 'mapbox://styles/jacquelickteig/cm19xymc400tt01pde8ul6loi',
+    center: [-98.5795, 39.8283],
     zoom: 3
   });
 
   map.on('load', async () => {
     try {
-      // Fetch dataset directly
       const datasetUrl = 'https://api.mapbox.com/datasets/v1/jacquelickteig/cmehl5mrh2qmv1nkae937qkrh/features?access_token=' + mapboxgl.accessToken;
       const res = await fetch(datasetUrl);
       const geojson = await res.json();
 
-      // Add data source
       map.addSource('offices', {
         type: 'geojson',
         data: geojson
       });
 
-      // Add circle markers (your style)
       map.addLayer({
         id: 'offices-layer',
         type: 'circle',
         source: 'offices',
         paint: {
           'circle-radius': 6,
-          'circle-color': '#009de0' // teal blue
+          'circle-color': '#009de0'
         }
       });
 
@@ -103,6 +100,32 @@
 
       stateSelect.addEventListener('change', applyFilters);
       buSelect.addEventListener('change', applyFilters);
+
+      // --- Popup on Hover ---
+      const popup = new mapboxgl.Popup({
+        closeButton: false,
+        closeOnClick: false
+      });
+
+      map.on('mouseenter', 'offices-layer', (e) => {
+        map.getCanvas().style.cursor = 'pointer';
+
+        const feature = e.features[0];
+        const props = feature.properties;
+
+        const html = `
+          <strong>${props.officeName || 'Unknown Office'}</strong><br>
+          ${props.address || 'No address'}<br>
+          ${props.phone || 'No phone'}
+        `;
+
+        popup.setLngLat(e.lngLat).setHTML(html).addTo(map);
+      });
+
+      map.on('mouseleave', 'offices-layer', () => {
+        map.getCanvas().style.cursor = '';
+        popup.remove();
+      });
 
     } catch (err) {
       console.error('Error loading dataset:', err);
