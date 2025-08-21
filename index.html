@@ -16,6 +16,10 @@
       font-family:sans-serif; z-index:1;
     }
     select { margin:5px 0; width:200px; }
+    .mapboxgl-popup {
+      font-family: sans-serif;
+      font-size: 13px;
+    }
   </style>
 </head>
 <body>
@@ -37,7 +41,7 @@
   const map = new mapboxgl.Map({
     container: 'map',
     style: 'mapbox://styles/jacquelickteig/cm19xymc400tt01pde8ul6loi',
-    center: [-98.5795, 39.8283],
+    center: [-98.5795, 39.8283], // center USA
     zoom: 3
   });
 
@@ -47,11 +51,13 @@
       const res = await fetch(datasetUrl);
       const geojson = await res.json();
 
+      // Add dataset source
       map.addSource('offices', {
         type: 'geojson',
         data: geojson
       });
 
+      // Add styled markers
       map.addLayer({
         id: 'offices-layer',
         type: 'circle',
@@ -66,8 +72,8 @@
       const stateSelect = document.getElementById('stateFilter');
       const buSelect = document.getElementById('buFilter');
 
-      const states = [...new Set(geojson.features.map(f => f.properties.state).filter(Boolean))];
-      const bus = [...new Set(geojson.features.map(f => f.properties.bu).filter(Boolean))];
+      const states = [...new Set(geojson.features.map(f => f.properties.state).filter(Boolean))].sort();
+      const bus = [...new Set(geojson.features.map(f => f.properties.bu).filter(Boolean))].sort();
 
       states.forEach(s => {
         const opt = document.createElement('option');
@@ -81,6 +87,7 @@
         buSelect.appendChild(opt);
       });
 
+      // Filtering function
       function applyFilters() {
         const state = stateSelect.value;
         const bu = buSelect.value;
@@ -101,25 +108,14 @@
       stateSelect.addEventListener('change', applyFilters);
       buSelect.addEventListener('change', applyFilters);
 
-      // --- Popup on Hover ---
-      const popup = new mapboxgl.Popup({
-        closeButton: false,
-        closeOnClick: false
-      });
+      // Hover popup
+      const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
 
       map.on('mouseenter', 'offices-layer', (e) => {
         map.getCanvas().style.cursor = 'pointer';
-
-        const feature = e.features[0];
-        const props = feature.properties;
-
-        const html = `
-          <strong>${props.officeName || 'Unknown Office'}</strong><br>
-          ${props.address || 'No address'}<br>
-          ${props.phone || 'No phone'}
-        `;
-
-        popup.setLngLat(e.lngLat).setHTML(html).addTo(map);
+        const props = e.features[0].properties;
+        const html = `<strong>${props.officeName || ''}</strong><br>${props.address || ''}<br>${props.phone || ''}`;
+        popup.setLngLat(e.features[0].geometry.coordinates).setHTML(html).addTo(map);
       });
 
       map.on('mouseleave', 'offices-layer', () => {
