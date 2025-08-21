@@ -18,19 +18,16 @@
     }
     label { font-weight:bold; }
     select { margin:5px 0; width:100%; }
-    button { margin:5px 0; padding:5px 10px; }
-    input[type="file"], input[type="color"] { margin:5px 0; }
+    button { margin:5px 0; padding:5px 10px; width:100%; }
+    input[type="file"], input[type="color"] { margin:5px 0; width:100%; }
     .mapboxgl-popup { font-family: sans-serif; font-size: 13px; }
     .mapboxgl-popup-content { white-space: pre-line; }
   </style>
 </head>
 <body>
 <div id="filters">
-  <label>Filter by State</label><br>
-  <select id="stateFilter" multiple size="5"></select><br>
-
-  <label>Filter by Province</label><br>
-  <select id="provinceFilter" multiple size="5"></select><br>
+  <label>Filter by State/Province</label><br>
+  <select id="regionFilter" multiple size="10" title="Hold Shift to select multiple regions"></select><br>
 
   <label>Filter by Business Unit</label><br>
   <select id="buFilter" multiple size="5"></select><br>
@@ -40,9 +37,15 @@
 
   <label>Upload CSV of Offices</label><br>
   <input type="file" id="csvUpload" accept=".csv"><br>
-  <label>Marker Color</label><br>
-  <input type="color" id="colorPicker" value="#ff0000"><br>
+
+  <label>Marker Color <br><span style="font-weight:normal; font-size:12px;">(for uploaded addresses)</span></label><br>
+  <input type="color" id="colorPicker" value="#000086"><br>
+  <span id="colorHex" style="font-size:12px; font-family:monospace;">#000086</span><br>
+
   <button id="revertMap">Revert to Original Map</button>
+  <hr>
+
+  <button id="exportMap">Export Map as PNG</button>
 </div>
 <div id="map"></div>
 
@@ -76,25 +79,47 @@
         paint: { 'circle-radius': 6, 'circle-color': '#009de0' }
       });
 
-      const stateSelect = document.getElementById('stateFilter');
-      const provinceSelect = document.getElementById('provinceFilter');
+      const regionSelect = document.getElementById('regionFilter');
       const buSelect = document.getElementById('buFilter');
 
       const states = [...new Set(geojson.features.filter(f => f.properties.country === "US").map(f => f.properties.state).filter(Boolean))].sort();
       const provinces = [...new Set(geojson.features.filter(f => f.properties.country === "CAN").map(f => f.properties.state).filter(Boolean))].sort();
       const bus = [...new Set(geojson.features.map(f => f.properties.bu).filter(Boolean))].sort();
 
-      states.forEach(s => { const opt=document.createElement('option'); opt.value=s; opt.textContent=s; stateSelect.appendChild(opt); });
-      provinces.forEach(p => { const opt=document.createElement('option'); opt.value=p; opt.textContent=p; provinceSelect.appendChild(opt); });
-      bus.forEach(b => { const opt=document.createElement('option'); opt.value=b; opt.textContent=b; buSelect.appendChild(opt); });
+      const usGroup = document.createElement('optgroup');
+      usGroup.label = "United States";
+      states.forEach(s => { 
+        const opt=document.createElement('option'); 
+        opt.value="US|"+s; 
+        opt.textContent=s; 
+        usGroup.appendChild(opt); 
+      });
+
+      const caGroup = document.createElement('optgroup');
+      caGroup.label = "Canada";
+      provinces.forEach(p => { 
+        const opt=document.createElement('option'); 
+        opt.value="CAN|"+p; 
+        opt.textContent=p; 
+        caGroup.appendChild(opt); 
+      });
+
+      regionSelect.appendChild(usGroup);
+      regionSelect.appendChild(caGroup);
+
+      bus.forEach(b => { 
+        const opt=document.createElement('option'); 
+        opt.value=b; 
+        opt.textContent=b; 
+        buSelect.appendChild(opt); 
+      });
 
       function getSelectedValues(select) {
         return Array.from(select.selectedOptions).map(opt => opt.value);
       }
 
       function applyFilters() {
-        const selectedStates = getSelectedValues(stateSelect);
-        const selectedProvinces = getSelectedValues(provinceSelect);
+        const selectedRegions = getSelectedValues(regionSelect); // ["US|Alabama","CAN|Ontario"]
         const selectedBUs = getSelectedValues(buSelect);
 
         const filtered = {
@@ -103,25 +128,25 @@
             const props = f.properties;
             let match = true;
 
-            if (selectedStates.length > 0 && props.country === "US" && !selectedStates.includes(props.state)) match = false;
-            if (selectedProvinces.length > 0 && props.country === "CAN" && !selectedProvinces.includes(props.state)) match = false;
-            if (selectedStates.length > 0 && props.country === "CAN") match = false; // hide Canada when states are picked
-            if (selectedProvinces.length > 0 && props.country === "US") match = false; // hide US when provinces are picked
+            if (selectedRegions.length > 0) {
+              const regionCode = props.country + "|" + props.state;
+              if (!selectedRegions.includes(regionCode)) match = false;
+            }
+
             if (selectedBUs.length > 0 && !selectedBUs.includes(props.bu)) match = false;
 
             return match;
           })
         };
+
         map.getSource('offices').setData(filtered);
       }
 
-      stateSelect.addEventListener('change', applyFilters);
-      provinceSelect.addEventListener('change', applyFilters);
+      regionSelect.addEventListener('change', applyFilters);
       buSelect.addEventListener('change', applyFilters);
 
       document.getElementById('clearFilters').addEventListener('click', () => {
-        stateSelect.selectedIndex = -1;
-        provinceSelect.selectedIndex = -1;
+        regionSelect.selectedIndex = -1;
         buSelect.selectedIndex = -1;
         map.getSource('offices').setData(originalGeojson);
       });
@@ -139,7 +164,6 @@
       document.getElementById('csvUpload').addEventListener('change', function(e){
         const file = e.target.files[0];
         if (!file) return;
-        const color = document.getElementById('colorPicker').value;
 
         Papa.parse(file, {
           header: true,
@@ -150,7 +174,6 @@
               let lat = parseFloat(row.Latitude);
               let lng = parseFloat(row.Longitude);
 
-              // Geocode if no lat/lng
               if ((!lat || !lng) && row.ADDRESS) {
                 try {
                   const response = await fetch(
@@ -190,7 +213,7 @@
               id: uploadedLayerId,
               type: "circle",
               source: uploadedLayerId,
-              paint: { "circle-radius": 6, "circle-color": color }
+              paint: { "circle-radius": 6, "circle-color": document.getElementById('colorPicker').value }
             });
 
             map.on('mouseenter', uploadedLayerId, (e) => {
@@ -205,12 +228,32 @@
         });
       });
 
+      // Color picker live updates uploaded markers
+      const colorInput = document.getElementById('colorPicker');
+      const colorHex = document.getElementById('colorHex');
+      colorInput.addEventListener('input', () => {
+        colorHex.textContent = colorInput.value.toUpperCase();
+        if (map.getLayer(uploadedLayerId)) {
+          map.setPaintProperty(uploadedLayerId, 'circle-color', colorInput.value);
+        }
+      });
+
       // Revert to original map
       document.getElementById('revertMap').addEventListener('click', () => {
         if (map.getLayer(uploadedLayerId)) {
           map.removeLayer(uploadedLayerId);
           map.removeSource(uploadedLayerId);
         }
+      });
+
+      // Export to PNG
+      document.getElementById('exportMap').addEventListener('click', () => {
+        const canvas = map.getCanvas();
+        const img = canvas.toDataURL("image/png");
+        const link = document.createElement('a');
+        link.href = img;
+        link.download = "map-export.png";
+        link.click();
       });
 
     } catch (err) {
