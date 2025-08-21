@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Salas O'Brien Offices Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    body { margin:0; padding:0; }
+    #map { position:absolute; top:0; bottom:0; width:100%; }
+    #controls {
+      position:absolute;
+      top:10px; left:10px;
+      background:#fff; padding:10px; border-radius:4px;
+      font-family:sans-serif; z-index:1; width:220px;
+    }
+    select, input { margin:5px 0; width:200px; }
+  </style>
+</head>
+<body>
+<div id="controls">
+  <label>Filter by State / Province</label><br>
+  <select id="stateFilter">
+    <option value="">All</option>
+  </select><br>
+  <label>Filter by Business Unit</label><br>
+  <select id="buFilter">
+    <option value="">All</option>
+  </select><br><br>
+  
+  <label>Upload CSV</label><br>
+  <input type="file" id="csvUpload" accept=".csv" /><br>
+  <label>Marker Color</label><br>
+  <input type="color" id="csvColor" value="#FF0000" />
+</div>
+<div id="map"></div>
+
+<script>
+mapboxgl.accessToken = 'pk.eyJ1IjoiamFjcXVlbGlja3RlaWciLCJhIjoiY21lZDF0aXE0MDVrYzJpcGxxYWJjcjBkaCJ9.FCV2mpRq2iULMEZJbBi0Iw';
+
+const map = new mapboxgl.Map({
+  container: 'map',
+  style: 'mapbox://styles/jacquelickteig/cm19xymc400tt01pde8ul6loi',
+  center: [-98.5795, 39.8283],
+  zoom: 3
+});
+
+let officialGeojson = null;
+let userDatasets = []; // store {id, original, color}
+
+const stateSelect = document.getElementById('stateFilter');
+const buSelect = document.getElementById('buFilter');
+
+// FILTER FUNCTION
+function applyFilters() {
+  const state = stateSelect.value;
+  const bu = buSelect.value;
+
+  if (officialGeojson) {
+    const filtered = {
+      type: 'FeatureCollection',
+      features: officialGeojson.features.filter(f => {
+        let match = true;
+        if (state && f.properties['STATE / PROVINCE'] !== state) match = false;
+        if (bu && f.properties['BU'] !== bu) match = false;
+        return match;
+      })
+    };
+    map.getSource('offices').setData(filtered);
+  }
+
+  userDatasets.forEach(ds => {
+    const filtered = {
+      type: 'FeatureCollection',
+      features: ds.original.features.filter(f => {
+        let match = true;
+        if (state && f.properties['STATE / PROVINCE'] !== state) match = false;
+        if (bu && f.properties['BU'] !== bu) match = false;
+        return match;
+      })
+    };
+    map.getSource(ds.id).setData(filtered);
+  });
+}
+
+stateSelect.addEventListener('change', applyFilters);
+buSelect.addEventListener('change', applyFilters);
+
+map.on('load', async () => {
+  try {
+    const datasetUrl = 'https://api.mapbox.com/datasets/v1/jacquelickteig/cmehl5mrh2qmv1nkae937qkrh/features?access_token=' + mapboxgl.accessToken;
+    const res = await fetch(datasetUrl);
+    officialGeojson = await res.json();
+
+    // Add official offices
+    map.addSource('offices', { type: 'geojson', data: officialGeojson });
+    map.addLayer({
+      id: 'offices-layer',
+      type: 'circle',
+      source: 'offices',
+      paint: {
+        'circle-radius': 6,
+        'circle-color': '#009de0'
+      }
+    });
+
+    // Populate filter dropdowns
+    const states = [...new Set(officialGeojson.features.map(f => f.properties['STATE / PROVINCE']).filter(Boolean))];
+    const bus = [...new Set(officialGeojson.features.map(f => f.properties['BU']).filter(Boolean))];
+
+    states.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s; opt.textContent = s;
+      stateSelect.appendChild(opt);
+    });
+
+    bus.forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b; opt.textContent = b;
+      buSelect.appendChild(opt);
+    });
+
+  } catch (err) {
+    console.error('Error loading dataset:', err);
+  }
+});
+
+// CSV UPLOAD HANDLER
+document.getElementById('csvUpload').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  Papa.parse(file, {
+    header: true,
+    complete: results => {
+      const color = document.getElementById('csvColor').value;
+      const id = 'user-' + Date.now();
+
+      const features = results.data
+        .filter(r => r.Latitude && r.Longitude)
+        .map(r => ({
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [parseFloat(r.Longitude), parseFloat(r.Latitude)]
+          },
+          properties: {
+            'STATE / PROVINCE': r['STATE / PROVINCE'] || '',
+            'BU': r['BU'] || ''
+          }
+        }));
+
+      const geojson = { type: 'FeatureCollection', features };
+
+      // Store for later filtering
+      userDatasets.push({ id, original: geojson, color });
+
+      // Add to map
+      map.addSource(id, { type: 'geojson', data: geojson });
+      map.addLayer({
+        id: id + '-layer',
+        type: 'circle',
+        source: id,
+        paint: {
+          'circle-radius': 6,
+          'circle-color': color
+        }
+      });
+    }
+  });
+});
+</script>
+</body>
+</html>
