@@ -50,7 +50,10 @@
   <label>Additional Addresses</label>
 <span class="subhead">Upload a .csv file of client or project locations</span>
   <input type="file" id="csvUpload" accept=".csv"><br>
-<button id="downloadTemplate">Download Template</button><br>
+<a href="#" id="downloadTemplate" style="display:inline-block; margin-top:6px; font-size:13px; text-decoration:underline; color:#009de0; cursor:pointer;">
+  download template
+</a>
+  <br>
 <br>
   <label>Marker Color <br><span class="subhead">(for uploaded addresses)</span></label><br>
   <div id="color-picker"></div><br>
@@ -295,8 +298,9 @@
     }
   });
 
-  // Force Template CSV download
-document.getElementById('downloadTemplate').addEventListener('click', async () => {
+// Force Template CSV download
+document.getElementById('downloadTemplate').addEventListener('click', async (e) => {
+  e.preventDefault(); // prevent navigation
   const url = "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/refs/heads/main/MapAddressTemplate.csv";
   try {
     const response = await fetch(url);
@@ -312,7 +316,9 @@ document.getElementById('downloadTemplate').addEventListener('click', async () =
   }
 });
 
+
 </script>
 </body>
 </html>
+
 
