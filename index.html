@@ -17,8 +17,8 @@
       font-family:sans-serif; z-index:1;
       max-width:260px;
     }
-    label { font-weight:bold; }
-    .subhead { font-weight:normal; font-size:12px; display:block; margin-top:-2px; margin-bottom:5px; }
+    label { font-weight:bold; margin-bottom:8px; display:block;}
+    .subhead { font-weight:normal; font-size:12px; display:block; margin-top:-2px; margin-bottom:10px; }
     select { margin:5px 0; width:100%; }
     button { margin:5px 0; padding:5px 10px; width:100%; }
     input[type="file"], input[type="color"] { margin:5px 0; width:100%; }
@@ -31,22 +31,23 @@
   <label>Filter by State/Province</label>
   <span class="subhead">(hold Ctrl + click to select multiple states/provinces)</span>
   <select id="regionFilter" multiple size="10"></select><br>
-
+<br>
   <label>Filter by Business Unit</label><br>
   <select id="buFilter" multiple size="5"></select><br>
-
+<br>
   <button id="clearFilters">Clear Filters</button>
   <hr>
-
+<br>
+  <br>
   <label>Upload CSV of Offices</label><br>
   <input type="file" id="csvUpload" accept=".csv"><br>
-
+<br>
   <label>Marker Color <br><span style="font-weight:normal; font-size:12px;">(for uploaded addresses)</span></label><br>
   <input type="color" id="colorPicker" value="#000086"><br>
-
+<br>
   <button id="revertMap">Revert to Original Map</button>
   <hr>
-
+<br>
   <button id="exportMap">Export Map as PNG</button>
 </div>
 <div id="map"></div>
@@ -277,4 +278,5 @@ document.getElementById('revertMap').addEventListener('click', () => {
 </script>
 </body>
 </html>
+
 
