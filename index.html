@@ -47,12 +47,12 @@
   <div id="filters">
     <label>Filter by State/Province</label>
     <span class="subhead">(hold Ctrl + click to select multiple states/provinces)</span>
-    <select id="regionFilter" multiple size="10"></select><br><br>
+    <select id="regionFilter" multiple size="10"></select><br><button id="clearRegion">Clear State/Province</button><br>
 
     <label>Filter by Business Unit</label><br>
-    <select id="buFilter" multiple size="5"></select><br><br>
+    <select id="buFilter" multiple size="5"></select><br> <button id="clearBU">Clear Business Unit</button><br>
 
-    <button id="clearFilters">Clear Filters</button><br><br>
+    <button id="clearFilters">Clear All Filters</button><br><br>
     <hr><br>
 
     <label>Additional Addresses</label>
@@ -199,6 +199,19 @@
         regionSelect.addEventListener('change', applyFilters);
         buSelect.addEventListener('change', applyFilters);
 
+     // 🔹 Clear State/Province only
+        document.getElementById('clearRegion').addEventListener('click', () => {
+          regionSelect.selectedIndex = -1;
+          applyFilters();
+        });
+
+        // 🔹 Clear Business Unit only
+        document.getElementById('clearBU').addEventListener('click', () => {
+          buSelect.selectedIndex = -1;
+          applyFilters();
+        });
+
+        // 🔹 Clear All
         document.getElementById('clearFilters').addEventListener('click', () => {
           regionSelect.selectedIndex = -1;
           buSelect.selectedIndex = -1;
@@ -342,3 +355,4 @@
   </script>
 </body>
 </html>
+
