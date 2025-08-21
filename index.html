@@ -6,42 +6,73 @@
   <title>Office Map</title>
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet"/>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; }
-    #map { width: 100%; height: 90vh; }
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      display: flex; /* sidebar + map */
+      font-family: Arial, sans-serif;
+    }
     #controls {
-      padding: 10px;
+      width: 280px;
       background: #fff;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      padding: 15px;
+      box-shadow: 2px 0 6px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      overflow-y: auto;
+    }
+    #controls label {
+      font-weight: bold;
       font-size: 14px;
+      display: flex;
+      flex-direction: column;
     }
-    label { font-weight: bold; display: block; margin-top: 8px; }
-    small { font-weight: normal; font-size: 12px; color: #555; }
-    select, input[type="file"], input[type="color"], button {
-      margin-top: 4px;
-      padding: 4px;
+    #controls small {
+      font-weight: normal;
+      font-size: 12px;
+      color: #555;
+      margin-top: 2px;
     }
-    button { cursor: pointer; }
+    #controls select,
+    #controls input[type="file"],
+    #controls input[type="color"],
+    #controls button {
+      margin-top: 6px;
+    }
+    #map {
+      flex: 1;
+      height: 100%;
+    }
   </style>
 </head>
 <body>
   <div id="controls">
-    <label for="regionSelect">Filter by State/Province <br><small>(hold Ctrl + click to select multiple states/provinces)</small></label>
-    <select id="regionSelect" multiple></select>
+    <label>Filter by State/Province
+      <small>(hold Ctrl + click to select multiple states/provinces)</small>
+      <select id="stateFilter" multiple></select>
+    </label>
 
-    <label for="buSelect">Filter by Business Unit</label>
-    <select id="buSelect" multiple></select>
+    <label>Filter by Business Unit
+      <select id="buFilter" multiple></select>
+    </label>
 
-    <label for="csvUpload">Upload Addresses (CSV)</label>
-    <input type="file" id="csvUpload" accept=".csv" />
+    <label>Upload CSV of Addresses
+      <input type="file" id="fileInput" accept=".csv"/>
+    </label>
 
-    <label for="colorPicker">Marker Color <small>(for uploaded addresses)</small></label>
-    <input type="color" id="colorPicker" value="#000086">
+    <label>Marker Color <small>for uploaded addresses</small>
+      <input type="color" id="colorPicker" value="#000086"/>
+    </label>
 
-    <button id="revertMap">Revert to Original Map</button>
-    <button id="exportMap">Export Map as PNG</button>
+    <button id="revertButton">Revert to Original Map</button>
+    <button id="exportButton">Export Map as PNG</button>
   </div>
+
   <div id="map"></div>
 
   <script>
@@ -54,45 +85,72 @@
       zoom: 3
     });
 
-    let originalGeojson = {
-      type: "FeatureCollection",
-      features: [] // replace with your original office features
-    };
+    let uploadedMarkers = [];
+    const colorPicker = document.getElementById("colorPicker");
 
-    let uploadedLayerId = "uploaded-points";
+    // Handle CSV Upload
+    document.getElementById("fileInput").addEventListener("change", function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      Papa.parse(file, {
+        header: true,
+        complete: async function(results) {
+          // Clear old markers
+          uploadedMarkers.forEach(m => m.remove());
+          uploadedMarkers = [];
+          for (let row of results.data) {
+            let lat = parseFloat(row.Latitude);
+            let lon = parseFloat(row.Longitude);
 
-    // Populate filter dropdowns (placeholder options)
-    const regionSelect = document.getElementById("regionSelect");
-    ["Alabama","Oklahoma","Ontario","Texas","Wyoming"].sort().forEach(r => {
-      let opt = document.createElement("option");
-      opt.value = r; opt.textContent = r;
-      regionSelect.appendChild(opt);
+            // Geocode if no lat/lon provided
+            if ((!lat || !lon) && row.ADDRESS) {
+              try {
+                const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(row.ADDRESS)}&key=AIzaSyBdVVKVelSKtsN9F6wTh-S57j-r1TbvNXw`;
+                const res = await fetch(geocodeUrl);
+                const data = await res.json();
+                if (data.results && data.results.length > 0) {
+                  lat = data.results[0].geometry.location.lat;
+                  lon = data.results[0].geometry.location.lng;
+                }
+              } catch (err) {
+                console.error("Geocode failed:", err);
+              }
+            }
+
+            if (lat && lon) {
+              const marker = new mapboxgl.Marker({ color: colorPicker.value })
+                .setLngLat([lon, lat])
+                .setPopup(new mapboxgl.Popup().setText(`${row["Client and Project Name"] || ""}\n${row.ADDRESS || ""}`))
+                .addTo(map);
+              uploadedMarkers.push(marker);
+            }
+          }
+        }
+      });
     });
 
-    const buSelect = document.getElementById("buSelect");
-    ["Energy","Healthcare","Industrial"].sort().forEach(bu => {
-      let opt = document.createElement("option");
-      opt.value = bu; opt.textContent = bu;
-      buSelect.appendChild(opt);
+    // Change marker colors dynamically
+    colorPicker.addEventListener("input", () => {
+      uploadedMarkers.forEach(marker => {
+        const el = marker.getElement();
+        el.querySelector("svg path").setAttribute("fill", colorPicker.value);
+      });
     });
 
-    // Revert button
-    document.getElementById("revertMap").addEventListener("click", () => {
-      if (map.getLayer(uploadedLayerId)) {
-        map.removeLayer(uploadedLayerId);
-        map.removeSource(uploadedLayerId);
-      }
-      regionSelect.selectedIndex = -1;
-      buSelect.selectedIndex = -1;
-      document.getElementById("csvUpload").value = "";
-      document.getElementById("colorPicker").value = "#000086"; // reset default
-      map.getSource("offices")?.setData(originalGeojson);
+    // Revert button clears filters, markers, resets color
+    document.getElementById("revertButton").addEventListener("click", () => {
+      document.getElementById("stateFilter").selectedIndex = -1;
+      document.getElementById("buFilter").selectedIndex = -1;
+      document.getElementById("fileInput").value = "";
+      uploadedMarkers.forEach(m => m.remove());
+      uploadedMarkers = [];
+      colorPicker.value = "#000086";
     });
 
     // Export button
-    document.getElementById("exportMap").addEventListener("click", () => {
-      html2canvas(document.querySelector("#map"), {useCORS: true}).then(canvas => {
-        let link = document.createElement("a");
+    document.getElementById("exportButton").addEventListener("click", () => {
+      html2canvas(document.getElementById("map"), {useCORS: true}).then(canvas => {
+        const link = document.createElement("a");
         link.download = "map.png";
         link.href = canvas.toDataURL("image/png");
         link.click();
