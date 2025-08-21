@@ -1,262 +1,118 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Office Map with Upload + Filters</title>
+  <meta charset="utf-8">
+  <title>Office Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- Mapbox GL JS -->
-  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
-
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
   <style>
-    body { margin:0; padding:0; font-family: Arial, sans-serif; display:flex; }
-    #map { flex:1; height:100vh; }
-
-    .controls {
-      width:260px;
-      padding:12px;
-      background:#fff;
-      box-shadow:2px 0 6px rgba(0,0,0,0.2);
-      display:flex;
-      flex-direction:column;
-      gap:16px;
-      overflow-y:auto;
-    }
-    .control { display:flex; flex-direction:column; font-size:14px; }
-    .control label { font-weight:bold; margin-bottom:4px; }
-    .subtext { font-size:12px; color:#555; font-weight:normal; }
-
-    select, input[type="file"], input[type="color"], button {
-      padding:4px; font-size:14px;
-    }
-    button { cursor:pointer; }
+    body { margin:0; padding:0; display:flex; height:100vh; font-family: Arial, sans-serif; }
+    #sidebar { width:280px; background:#f8f8f8; padding:15px; overflow-y:auto; box-shadow:2px 0 5px rgba(0,0,0,0.1); }
+    #map { flex:1; }
+    h3 { margin-top:0; }
+    label { display:block; margin-top:12px; font-weight:bold; }
+    select, input[type="color"], input[type="file"], button { width:100%; margin-top:6px; padding:6px; }
+    .subhead { font-size:12px; font-weight:normal; color:#555; margin-top:2px; }
   </style>
 </head>
 <body>
-
-<div class="controls">
-  <div class="control">
-    <label for="stateFilter">Filter by State/Province
-      <div class="subtext">(hold Ctrl + click to select multiple states/provinces)</div>
+  <div id="sidebar">
+    <h3>Filters</h3>
+    <label>Filter by State/Province
+      <div class="subhead">(hold Ctrl + click to select multiple states/provinces)</div>
+      <select id="stateFilter" multiple size="8"></select>
     </label>
-    <select id="stateFilter" multiple size="5"></select>
-  </div>
-<br>
-  <div class="control">
-    <label for="buFilter">Filter by Business Unit</label>
-    <select id="buFilter" multiple size="5"></select>
-  </div>
-<br>
-  <div class="control">
-    <label for="markerColor">Marker Color <span class="subtext">(for uploaded addresses)</span></label>
-    <input type="color" id="markerColor" value="#000086">
-  </div>
-<br>
-  <div class="control">
-    <label for="csvUpload">Upload CSV</label>
-    <input type="file" id="csvUpload" accept=".csv">
-  </div>
-<br>
-  <div class="control">
+    <label>Filter by Business Unit
+      <select id="buFilter" multiple size="5"></select>
+    </label>
+    <label>Marker Color
+      <div class="subhead">for uploaded addresses</div>
+      <input type="color" id="markerColor" value="#000086">
+    </label>
+    <label>Upload Addresses
+      <input type="file" id="fileInput" accept=".csv">
+    </label>
     <button id="revertBtn">Revert to Original Map</button>
-  </div>
-<br>
-  <div class="control">
     <button id="exportBtn">Export Map as PNG</button>
   </div>
-</div>
+  <div id="map"></div>
 
-<div id="map"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script>
+    mapboxgl.accessToken = "pk.eyJ1IjoiamFjcXVlbGlja3RlaWciLCJhIjoiY2xibGk4dzI4MDFndjNvcGZiMWJ0Z2g1aCJ9.JEUK4ec6CII_v5q0v2iXJA";
 
-<script>
-// ===== CONFIG =====
-mapboxgl.accessToken = "pk.eyJ1IjoiamFjcXVlbGlja3RlaWciLCJhIjoiY2xibGk4dzI4MDFndjNvcGZiMWJ0Z2g1aCJ9.JEUK4ec6CII_v5q0v2iXJA";
+    const map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/jacquelickteig/cm19xymc400tt01pde8ul6loi',
+      center: [-98, 38],
+      zoom: 3
+    });
 
-// ===== MAP INIT =====
-const map = new mapboxgl.Map({
-  container: "map",
-  style: "mapbox://styles/jacquelickteig/cm19xymc400tt01pde8ul6loi",
-  center: [-95, 40],
-  zoom: 3
-});
+    const GOOGLE_MAPS_KEY = "AIzaSyBdVVKVelSKtsN9F6wTh-S57j-r1TbvNXw";
 
-let officeData = null;
-let uploadedData = null;
-let originalColor = "#000086";
+    let uploadedMarkers = [];
 
-// ===== Populate Dropdowns =====
-function populateDropdowns(features) {
-  const states = [...new Set(features.map(f => f.properties["STATE / PROVINCE"]).filter(Boolean))].sort();
-  const bus = [...new Set(features.map(f => f.properties["BU"]).filter(Boolean))].sort();
+    document.getElementById("fileInput").addEventListener("change", function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      Papa.parse(file, {
+        header: true,
+        complete: async function(results) {
+          clearUploadedMarkers();
+          for (const row of results.data) {
+            if (!row.ADDRESS) continue;
+            let lat = row.Latitude, lng = row.Longitude;
+            if (!lat || !lng) {
+              try {
+                const resp = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(row.ADDRESS)}&key=${GOOGLE_MAPS_KEY}`);
+                const data = await resp.json();
+                if (data.status === "OK") {
+                  lat = data.results[0].geometry.location.lat;
+                  lng = data.results[0].geometry.location.lng;
+                }
+              } catch(e) { console.error(e); }
+            }
+            if (lat && lng) {
+              const color = document.getElementById("markerColor").value;
+              const marker = new mapboxgl.Marker({ color }).setLngLat([lng, lat]).setPopup(new mapboxgl.Popup().setText(row["Client and Project Name"] || row.ADDRESS)).addTo(map);
+              uploadedMarkers.push(marker);
+            }
+          }
+        }
+      });
+    });
 
-  const stateFilter = document.getElementById("stateFilter");
-  const buFilter = document.getElementById("buFilter");
+    document.getElementById("markerColor").addEventListener("input", function(e) {
+      const newColor = e.target.value;
+      uploadedMarkers.forEach(m => {
+        const el = m.getElement().querySelector("svg path");
+        if (el) el.setAttribute("fill", newColor);
+      });
+    });
 
-  stateFilter.innerHTML = "";
-  buFilter.innerHTML = "";
-
-  states.forEach(s => {
-    const opt = document.createElement("option");
-    opt.value = s;
-    opt.textContent = s;
-    stateFilter.appendChild(opt);
-  });
-
-  bus.forEach(b => {
-    const opt = document.createElement("option");
-    opt.value = b;
-    opt.textContent = b;
-    buFilter.appendChild(opt);
-  });
-}
-
-// ===== Add Layers =====
-function addOfficeLayer(data) {
-  if (map.getSource("offices")) {
-    map.getSource("offices").setData(data);
-    return;
-  }
-  map.addSource("offices", { type: "geojson", data: data });
-  map.addLayer({
-    id: "offices-layer",
-    type: "circle",
-    source: "offices",
-    paint: {
-      "circle-radius": 6,
-      "circle-color": "#ff5722",
-      "circle-stroke-width": 1,
-      "circle-stroke-color": "#fff"
+    function clearUploadedMarkers() {
+      uploadedMarkers.forEach(m => m.remove());
+      uploadedMarkers = [];
     }
-  });
-}
 
-function addUploadLayer(data, color) {
-  if (map.getSource("uploads")) {
-    map.getSource("uploads").setData(data);
-    map.setPaintProperty("uploads-layer", "circle-color", color);
-    return;
-  }
-  map.addSource("uploads", { type: "geojson", data: data });
-  map.addLayer({
-    id: "uploads-layer",
-    type: "circle",
-    source: "uploads",
-    paint: {
-      "circle-radius": 7,
-      "circle-color": color,
-      "circle-stroke-width": 2,
-      "circle-stroke-color": "#fff"
-    }
-  });
-}
+    document.getElementById("revertBtn").addEventListener("click", () => {
+      clearUploadedMarkers();
+      document.getElementById("fileInput").value = "";
+      document.getElementById("markerColor").value = "#000086";
+      document.getElementById("stateFilter").selectedIndex = -1;
+      document.getElementById("buFilter").selectedIndex = -1;
+    });
 
-// ===== Filtering =====
-function applyFilters() {
-  if (!officeData) return;
-
-  const stateSel = Array.from(document.getElementById("stateFilter").selectedOptions).map(o => o.value);
-  const buSel = Array.from(document.getElementById("buFilter").selectedOptions).map(o => o.value);
-
-  const filtered = {
-    type: "FeatureCollection",
-    features: officeData.features.filter(f => {
-      const stateOk = stateSel.length === 0 || stateSel.includes(f.properties["STATE / PROVINCE"]);
-      const buOk = buSel.length === 0 || buSel.includes(f.properties["BU"]);
-      return stateOk && buOk;
-    })
-  };
-
-  addOfficeLayer(filtered);
-}
-
-// ===== CSV Upload =====
-document.getElementById("csvUpload").addEventListener("change", e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = evt => {
-    const text = evt.target.result;
-    parseCSV(text);
-  };
-  reader.readAsText(file);
-});
-
-function parseCSV(text) {
-  const rows = text.trim().split("\n").map(r => r.split(","));
-  const headers = rows.shift().map(h => h.trim());
-
-  const latIdx = headers.indexOf("Latitude");
-  const lngIdx = headers.indexOf("Longitude");
-  const addrIdx = headers.indexOf("ADDRESS");
-
-  const feats = rows.map(r => {
-    const lat = parseFloat(r[latIdx]);
-    const lng = parseFloat(r[lngIdx]);
-    if (isNaN(lat) || isNaN(lng)) return null;
-    return {
-      type: "Feature",
-      geometry: { type: "Point", coordinates: [lng, lat] },
-      properties: { address: r[addrIdx] }
-    };
-  }).filter(Boolean);
-
-  uploadedData = { type: "FeatureCollection", features: feats };
-  addUploadLayer(uploadedData, document.getElementById("markerColor").value);
-}
-
-// ===== Color Change =====
-document.getElementById("markerColor").addEventListener("input", e => {
-  if (uploadedData) addUploadLayer(uploadedData, e.target.value);
-});
-
-// ===== Revert =====
-document.getElementById("revertBtn").addEventListener("click", () => {
-  document.getElementById("stateFilter").selectedIndex = -1;
-  document.getElementById("buFilter").selectedIndex = -1;
-  document.getElementById("csvUpload").value = "";
-  document.getElementById("markerColor").value = originalColor;
-  uploadedData = null;
-  if (map.getSource("uploads")) {
-    map.removeLayer("uploads-layer");
-    map.removeSource("uploads");
-  }
-  addOfficeLayer(officeData);
-});
-
-// ===== Export =====
-document.getElementById("exportBtn").addEventListener("click", () => {
-  const link = document.createElement("a");
-  link.href = map.getCanvas().toDataURL("image/png");
-  link.download = "map-export.png";
-  link.click();
-});
-
-// ===== On Map Load =====
-map.on("load", () => {
-  // TODO: Replace with your real office data GeoJSON
-  officeData = {
-    type: "FeatureCollection",
-    features: [
-      {
-        type: "Feature",
-        geometry: { type: "Point", coordinates: [-97.333, 32.755] },
-        properties: { "STATE / PROVINCE": "Texas", "BU": "Southwest" }
-      },
-      {
-        type: "Feature",
-        geometry: { type: "Point", coordinates: [-79.383, 43.653] },
-        properties: { "STATE / PROVINCE": "Ontario", "BU": "Canada" }
-      }
-    ]
-  };
-  addOfficeLayer(officeData);
-  populateDropdowns(officeData.features);
-
-  document.getElementById("stateFilter").addEventListener("change", applyFilters);
-  document.getElementById("buFilter").addEventListener("change", applyFilters);
-});
-</script>
+    document.getElementById("exportBtn").addEventListener("click", () => {
+      html2canvas(document.getElementById("map"), {useCORS: true}).then(canvas => {
+        const link = document.createElement("a");
+        link.download = "map.png";
+        link.href = canvas.toDataURL();
+        link.click();
+      });
+    });
+  </script>
 </body>
 </html>
-
