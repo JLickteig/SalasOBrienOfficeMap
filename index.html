@@ -21,7 +21,7 @@
     button { margin:5px 0; padding:5px 10px; }
     input[type="file"], input[type="color"] { margin:5px 0; }
     .mapboxgl-popup { font-family: sans-serif; font-size: 13px; }
-    .mapboxgl-popup-content { white-space: pre-line; } /* 👈 shows Alt+Enter as line breaks */
+    .mapboxgl-popup-content { white-space: pre-line; }
   </style>
 </head>
 <body>
@@ -104,23 +104,59 @@
           features: originalGeojson.features.filter(f => {
             const props = f.properties;
             let match = true;
-            if (selectedStates.length > 0 && props.country === "US" && !selectedStates.includes(props.state)) match = false;
-            if (selectedProvinces.length > 0 && props.country === "CAN" && !selectedProvinces.includes(props.state)) match = false;
-            if (selectedBUs.length > 0 && !selectedBUs.includes(props.bu)) match = false;
+
+            // States filter
+            if (selectedStates.length > 0) {
+              if (props.country !== "US" || !selectedStates.includes(props.state)) {
+                match = false;
+              }
+            }
+
+            // Provinces filter
+            if (selectedProvinces.length > 0) {
+              if (props.country !== "CAN" || !selectedProvinces.includes(props.state)) {
+                match = false;
+              }
+            }
+
+            // BU filter
+            if (selectedBUs.length > 0 && !selectedBUs.includes(props.bu)) {
+              match = false;
+            }
+
             return match;
           })
         };
         map.getSource('offices').setData(filtered);
       }
 
-      stateSelect.addEventListener('change', applyFilters);
-      provinceSelect.addEventListener('change', applyFilters);
+      // Event listeners
+      stateSelect.addEventListener('change', () => {
+        if (getSelectedValues(stateSelect).length > 0) {
+          provinceSelect.disabled = true;
+        } else {
+          provinceSelect.disabled = false;
+        }
+        applyFilters();
+      });
+
+      provinceSelect.addEventListener('change', () => {
+        if (getSelectedValues(provinceSelect).length > 0) {
+          stateSelect.disabled = true;
+        } else {
+          stateSelect.disabled = false;
+        }
+        applyFilters();
+      });
+
       buSelect.addEventListener('change', applyFilters);
 
       document.getElementById('clearFilters').addEventListener('click', () => {
         stateSelect.selectedIndex = -1;
         provinceSelect.selectedIndex = -1;
         buSelect.selectedIndex = -1;
+        stateSelect.disabled = false;
+        provinceSelect.disabled = false;
         map.getSource('offices').setData(originalGeojson);
       });
 
