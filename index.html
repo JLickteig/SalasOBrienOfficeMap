@@ -50,9 +50,73 @@
       zoom: 3
     });
 
+    const DATASET_SOURCE = "offices";
+    const DATASET_ID = "jacquelickteig.cmeddnmdj11tc1pkaaqx37ajl";
     const GOOGLE_MAPS_KEY = "AIzaSyBdVVKVelSKtsN9F6wTh-S57j-r1TbvNXw";
 
     let uploadedMarkers = [];
+
+    map.on("load", () => {
+      map.addSource(DATASET_SOURCE, {
+        type: "vector",
+        url: "mapbox://" + DATASET_ID
+      });
+
+      map.addLayer({
+        id: "offices-layer",
+        type: "circle",
+        source: DATASET_SOURCE,
+        "source-layer": "2025_salasobrien_offices", 
+        paint: {
+          "circle-radius": 6,
+          "circle-color": "#000086"
+        }
+      });
+
+      populateFilters();
+    });
+
+    function populateFilters() {
+      const stateSelect = document.getElementById("stateFilter");
+      const buSelect = document.getElementById("buFilter");
+
+      map.once("idle", () => {
+        const features = map.querySourceFeatures(DATASET_SOURCE, {
+          sourceLayer: "2025_salasobrien_offices"
+        });
+
+        const states = [...new Set(features.map(f => f.properties["STATE / PROVINCE"]).filter(Boolean))].sort();
+        const bus = [...new Set(features.map(f => f.properties["BU"]).filter(Boolean))].sort();
+
+        states.forEach(s => {
+          const opt = document.createElement("option");
+          opt.value = s;
+          opt.textContent = s;
+          stateSelect.appendChild(opt);
+        });
+
+        bus.forEach(b => {
+          const opt = document.createElement("option");
+          opt.value = b;
+          opt.textContent = b;
+          buSelect.appendChild(opt);
+        });
+      });
+    }
+
+    function applyFilters() {
+      const stateVals = Array.from(document.getElementById("stateFilter").selectedOptions).map(o => o.value);
+      const buVals = Array.from(document.getElementById("buFilter").selectedOptions).map(o => o.value);
+
+      let filters = ["all"];
+      if (stateVals.length) filters.push(["in", ["get", "STATE / PROVINCE"], ["literal", stateVals]]);
+      if (buVals.length) filters.push(["in", ["get", "BU"], ["literal", buVals]]);
+
+      map.setFilter("offices-layer", filters);
+    }
+
+    document.getElementById("stateFilter").addEventListener("change", applyFilters);
+    document.getElementById("buFilter").addEventListener("change", applyFilters);
 
     document.getElementById("fileInput").addEventListener("change", function(e) {
       const file = e.target.files[0];
@@ -76,7 +140,10 @@
             }
             if (lat && lng) {
               const color = document.getElementById("markerColor").value;
-              const marker = new mapboxgl.Marker({ color }).setLngLat([lng, lat]).setPopup(new mapboxgl.Popup().setText(row["Client and Project Name"] || row.ADDRESS)).addTo(map);
+              const marker = new mapboxgl.Marker({ color })
+                .setLngLat([lng, lat])
+                .setPopup(new mapboxgl.Popup().setText(row["Client and Project Name"] || row.ADDRESS))
+                .addTo(map);
               uploadedMarkers.push(marker);
             }
           }
@@ -103,6 +170,7 @@
       document.getElementById("markerColor").value = "#000086";
       document.getElementById("stateFilter").selectedIndex = -1;
       document.getElementById("buFilter").selectedIndex = -1;
+      applyFilters();
     });
 
     document.getElementById("exportBtn").addEventListener("click", () => {
