@@ -47,8 +47,10 @@
 <br>
   <button id="clearFilters">Clear Filters</button>
 <br><br>
-  <label>Upload CSV of Offices</label><br>
+  <label>Additional Addresses</label>
+<span class="subhead">Upload a .csv file of client or project locations</span>
   <input type="file" id="csvUpload" accept=".csv"><br>
+<button id="downloadTemplate">Download Template</button><br>
 <br>
   <label>Marker Color <br><span class="subhead">(for uploaded addresses)</span></label><br>
   <div id="color-picker"></div><br>
@@ -292,6 +294,25 @@
       console.error('Error loading dataset:', err);
     }
   });
+
+  // Force Template CSV download
+document.getElementById('downloadTemplate').addEventListener('click', async () => {
+  const url = "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/refs/heads/main/MapAddressTemplate.csv";
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = "MapAddressTemplate.csv"; // ✅ forces save as CSV
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch (err) {
+    console.error("Failed to download template:", err);
+  }
+});
+
 </script>
 </body>
 </html>
+
