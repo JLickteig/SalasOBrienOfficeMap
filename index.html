@@ -20,7 +20,6 @@
     body { margin:0; padding:0; }
     #map { position:absolute; top:0; bottom:0; width:100%; }
 
-    /* Sidebar filters */
     #filters {
       position:absolute;
       top:10px; left:10px;
@@ -34,7 +33,6 @@
       overflow-y:auto;
       box-shadow:0 2px 6px rgba(0,0,0,0.2);
     }
-
     label { font-weight:bold; display:block; margin-bottom:4px; }
     .subhead { font-weight:normal; font-size:12px; display:block; margin-top:-2px; margin-bottom:8px; }
     select { margin:5px 0; width:100%; }
@@ -92,17 +90,83 @@
     <button id="exportMap">Export Map as PNG</button>
   </div>
 
-  <!-- Your map JS logic goes here -->
   <script>
-    mapboxgl.accessToken = 'YOUR_MAPBOX_TOKEN';
+    // ✅ Your real token
+    mapboxgl.accessToken = 'pk.eyJ1IjoiamFjcXVlbGlja3RlaWciLCJhIjoiY2xibGk4dzI4MDFndjNvcGZiMWJ0Z2g1aCJ9.JEUK4ec6CII_v5q0v2iXJA';
+
+    const DATASET_ID = 'cmehl5mrh2qmv1nkae937qkrh';
+    const TILESET_ID = 'jacquelickteig.cmeddnmdj11tc1pkaaqx37ajl';
+
     const map = new mapboxgl.Map({
       container: 'map',
-      style: 'mapbox://styles/mapbox/streets-v12',
+      style: 'mapbox://styles/jacquelickteig/cm19xymc400tt01pde8ul6loi', // ✅ your style ID
       center: [-97, 39],
       zoom: 3
     });
 
-    // Pickr init
+    // -------------------------
+    // LOAD OFFICE DATA
+    // -------------------------
+    map.on('load', () => {
+      map.addSource('offices', {
+        type: 'vector',
+        url: 'mapbox://' + TILESET_ID
+      });
+
+      map.addLayer({
+        id: 'offices-layer',
+        type: 'circle',
+        source: 'offices',
+        'source-layer': '2025_salasobrien_offices', // ✅ layer name from tileset
+        paint: {
+          'circle-radius': 6,
+          'circle-color': '#009de0'
+        }
+      });
+    });
+
+    // -------------------------
+    // FILTER LOGIC
+    // -------------------------
+    function applyFilters() {
+      const regionSelect = document.getElementById('regionFilter');
+      const buSelect = document.getElementById('buFilter');
+      const selectedRegions = Array.from(regionSelect.selectedOptions).map(o => o.value);
+      const selectedBUs = Array.from(buSelect.selectedOptions).map(o => o.value);
+
+      let filters = ['all'];
+      if (selectedRegions.length > 0) {
+        filters.push(['in', ['get', 'STATE'], ['literal', selectedRegions]]);
+      }
+      if (selectedBUs.length > 0) {
+        filters.push(['in', ['get', 'BU'], ['literal', selectedBUs]]);
+      }
+
+      if (map.getLayer('offices-layer')) {
+        map.setFilter('offices-layer', filters);
+      }
+    }
+
+    document.getElementById('regionFilter').addEventListener('change', applyFilters);
+    document.getElementById('buFilter').addEventListener('change', applyFilters);
+
+    document.getElementById('clearRegion').onclick = () => {
+      document.getElementById('regionFilter').selectedIndex = -1;
+      applyFilters();
+    };
+    document.getElementById('clearBU').onclick = () => {
+      document.getElementById('buFilter').selectedIndex = -1;
+      applyFilters();
+    };
+    document.getElementById('clearFilters').onclick = () => {
+      document.getElementById('regionFilter').selectedIndex = -1;
+      document.getElementById('buFilter').selectedIndex = -1;
+      applyFilters();
+    };
+
+    // -------------------------
+    // COLOR PICKER FOR UPLOADS
+    // -------------------------
     const pickr = Pickr.create({
       el: '#color-picker',
       theme: 'classic',
@@ -120,21 +184,6 @@
         map.setPaintProperty('uploadedLayer', 'circle-color', newColor);
       }
     });
-
-    // Example: filter clear buttons
-    document.getElementById('clearRegion').onclick = () => {
-      document.getElementById('regionFilter').selectedIndex = -1;
-      // re-run filtering function here
-    };
-    document.getElementById('clearBU').onclick = () => {
-      document.getElementById('buFilter').selectedIndex = -1;
-      // re-run filtering function here
-    };
-    document.getElementById('clearFilters').onclick = () => {
-      document.getElementById('regionFilter').selectedIndex = -1;
-      document.getElementById('buFilter').selectedIndex = -1;
-      // re-run filtering function here
-    };
   </script>
 </body>
 </html>
