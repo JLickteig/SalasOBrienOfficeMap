@@ -1,283 +1,255 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Salas O'Brien Offices Map</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <title>Office Map with Upload + Filters</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Mapbox GL JS -->
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+
   <style>
-    body { margin:0; padding:0; }
-    #map { position:absolute; top:0; bottom:0; width:100%; }
-    #filters {
-      position:absolute;
-      top:10px; left:10px;
-      background:#fff; padding:10px; border-radius:4px;
-      font-family:sans-serif; z-index:1;
-      max-width:260px;
+    body { margin:0; padding:0; font-family: Arial, sans-serif; }
+    #map { width:100%; height:90vh; }
+
+    .controls {
+      padding:10px; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.2);
+      display:flex; flex-wrap:wrap; gap:12px; align-items:flex-start;
     }
-    label { font-weight:bold; }
-    .subhead { font-weight:normal; font-size:12px; display:block; margin-top:-2px; margin-bottom:5px; }
-    select { margin:5px 0; width:100%; }
-    button { margin:5px 0; padding:5px 10px; width:100%; }
-    input[type="file"], input[type="color"], input[type="text"] { margin:5px 0; width:100%; }
-    .mapboxgl-popup { font-family: sans-serif; font-size: 13px; }
-    .mapboxgl-popup-content { white-space: pre-line; }
+    .control { display:flex; flex-direction:column; font-size:14px; }
+    .control label { font-weight:bold; margin-bottom:4px; }
+    .subtext { font-size:12px; color:#555; font-weight:normal; }
+
+    select, input[type="file"], input[type="color"], button {
+      padding:4px; font-size:14px;
+    }
+    button { cursor:pointer; }
   </style>
 </head>
 <body>
-<div id="filters">
-  <label>Filter by State/Province</label>
-  <span class="subhead">(hold Ctrl + click to select multiple states/provinces)</span>
-  <select id="regionFilter" multiple size="10"></select><br>
 
-  <label>Filter by Business Unit</label><br>
-  <select id="buFilter" multiple size="5"></select><br>
+<div class="controls">
+  <div class="control">
+    <label for="stateFilter">Filter by State/Province
+      <div class="subtext">(hold Ctrl + click to select multiple states/provinces)</div>
+    </label>
+    <select id="stateFilter" multiple size="5"></select>
+  </div>
 
-  <button id="clearFilters">Clear Filters</button>
-  <hr>
+  <div class="control">
+    <label for="buFilter">Filter by Business Unit</label>
+    <select id="buFilter" multiple size="5"></select>
+  </div>
 
-  <label>Upload CSV of Offices</label><br>
-  <input type="file" id="csvUpload" accept=".csv"><br>
+  <div class="control">
+    <label for="markerColor">Marker Color <span class="subtext">(for uploaded addresses)</span></label>
+    <input type="color" id="markerColor" value="#000086">
+  </div>
 
-  <label>Marker Color <br><span style="font-weight:normal; font-size:12px;">(for uploaded addresses)</span></label><br>
-  <input type="color" id="colorPicker" value="#000086"><br>
-  <input type="text" id="hexInput" value="#000086" maxlength="7" style="font-family:monospace; font-size:12px;"><br>
+  <div class="control">
+    <label for="csvUpload">Upload CSV</label>
+    <input type="file" id="csvUpload" accept=".csv">
+  </div>
 
-  <button id="revertMap">Revert to Original Map</button>
-  <hr>
+  <div class="control">
+    <label>&nbsp;</label>
+    <button id="revertBtn">Revert to Original Map</button>
+  </div>
 
-  <button id="exportMap">Export Map as PNG</button>
+  <div class="control">
+    <label>&nbsp;</label>
+    <button id="exportBtn">Export Map as PNG</button>
+  </div>
 </div>
+
 <div id="map"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 <script>
-  mapboxgl.accessToken = 'pk.eyJ1IjoiamFjcXVlbGlja3RlaWciLCJhIjoiY21lZDF0aXE0MDVrYzJpcGxxYWJjcjBkaCJ9.FCV2mpRq2iULMEZJbBi0Iw';
-  const GOOGLE_MAPS_KEY = "AIzaSyBdVVKVelSKtsN9F6wTh-S57j-r1TbvNXw";
+// ===== CONFIG =====
+mapboxgl.accessToken = "pk.eyJ1IjoiamFjcXVlbGlja3RlaWciLCJhIjoiY2xibGk4dzI4MDFndjNvcGZiMWJ0Z2g1aCJ9.JEUK4ec6CII_v5q0v2iXJA";
 
-  const map = new mapboxgl.Map({
-    container: 'map',
-    style: 'mapbox://styles/jacquelickteig/cm19xymc400tt01pde8ul6loi',
-    center: [-98.5795, 39.8283],
-    zoom: 3
+// ===== MAP INIT =====
+const map = new mapboxgl.Map({
+  container: "map",
+  style: "mapbox://styles/jacquelickteig/cm19xymc400tt01pde8ul6loi",
+  center: [-95, 40],
+  zoom: 3
+});
+
+let officeData = null;
+let uploadedData = null;
+let originalColor = "#000086";
+
+// ===== Populate Dropdowns =====
+function populateDropdowns(features) {
+  const states = [...new Set(features.map(f => f.properties["STATE / PROVINCE"]).filter(Boolean))].sort();
+  const bus = [...new Set(features.map(f => f.properties["BU"]).filter(Boolean))].sort();
+
+  const stateFilter = document.getElementById("stateFilter");
+  const buFilter = document.getElementById("buFilter");
+
+  stateFilter.innerHTML = "";
+  buFilter.innerHTML = "";
+
+  states.forEach(s => {
+    const opt = document.createElement("option");
+    opt.value = s;
+    opt.textContent = s;
+    stateFilter.appendChild(opt);
   });
 
-  let originalGeojson = null;
-  let uploadedLayerId = "uploaded-layer";
+  bus.forEach(b => {
+    const opt = document.createElement("option");
+    opt.value = b;
+    opt.textContent = b;
+    buFilter.appendChild(opt);
+  });
+}
 
-  map.on('load', async () => {
-    try {
-      const datasetUrl = 'https://api.mapbox.com/datasets/v1/jacquelickteig/cmehl5mrh2qmv1nkae937qkrh/features?access_token=' + mapboxgl.accessToken;
-      const res = await fetch(datasetUrl);
-      const geojson = await res.json();
-      originalGeojson = geojson;
-
-      map.addSource('offices', { type: 'geojson', data: geojson });
-      map.addLayer({
-        id: 'offices-layer',
-        type: 'circle',
-        source: 'offices',
-        paint: { 'circle-radius': 6, 'circle-color': '#009de0' }
-      });
-
-      const regionSelect = document.getElementById('regionFilter');
-      const buSelect = document.getElementById('buFilter');
-
-      const states = [...new Set(geojson.features.filter(f => f.properties.country === "US").map(f => f.properties.state).filter(Boolean))].sort();
-      const provinces = [...new Set(geojson.features.filter(f => f.properties.country === "CAN").map(f => f.properties.state).filter(Boolean))].sort();
-      const bus = [...new Set(geojson.features.map(f => f.properties.bu).filter(Boolean))].sort();
-
-      const usGroup = document.createElement('optgroup');
-      usGroup.label = "United States";
-      states.forEach(s => { 
-        const opt=document.createElement('option'); 
-        opt.value="US|"+s; 
-        opt.textContent=s; 
-        usGroup.appendChild(opt); 
-      });
-
-      const caGroup = document.createElement('optgroup');
-      caGroup.label = "Canada";
-      provinces.forEach(p => { 
-        const opt=document.createElement('option'); 
-        opt.value="CAN|"+p; 
-        opt.textContent=p; 
-        caGroup.appendChild(opt); 
-      });
-
-      regionSelect.appendChild(usGroup);
-      regionSelect.appendChild(caGroup);
-
-      bus.forEach(b => { 
-        const opt=document.createElement('option'); 
-        opt.value=b; 
-        opt.textContent=b; 
-        buSelect.appendChild(opt); 
-      });
-
-      function getSelectedValues(select) {
-        return Array.from(select.selectedOptions).map(opt => opt.value);
-      }
-
-      function applyFilters() {
-        const selectedRegions = getSelectedValues(regionSelect); 
-        const selectedBUs = getSelectedValues(buSelect);
-
-        const filtered = {
-          type: 'FeatureCollection',
-          features: originalGeojson.features.filter(f => {
-            const props = f.properties;
-            let match = true;
-
-            if (selectedRegions.length > 0) {
-              const regionCode = props.country + "|" + props.state;
-              if (!selectedRegions.includes(regionCode)) match = false;
-            }
-
-            if (selectedBUs.length > 0 && !selectedBUs.includes(props.bu)) match = false;
-
-            return match;
-          })
-        };
-
-        map.getSource('offices').setData(filtered);
-      }
-
-      regionSelect.addEventListener('change', applyFilters);
-      buSelect.addEventListener('change', applyFilters);
-
-      document.getElementById('clearFilters').addEventListener('click', () => {
-        regionSelect.selectedIndex = -1;
-        buSelect.selectedIndex = -1;
-        map.getSource('offices').setData(originalGeojson);
-      });
-
-      const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
-      map.on('mouseenter', 'offices-layer', (e) => {
-        map.getCanvas().style.cursor = 'pointer';
-        const props = e.features[0].properties;
-        const html = `<span style="font-weight:bold; color:#009DE0;">${props.officeName || ''}</span><br>${props.address || ''}<br>${props.phone || ''}`;
-        popup.setLngLat(e.features[0].geometry.coordinates).setHTML(html).addTo(map);
-      });
-      map.on('mouseleave', 'offices-layer', () => { map.getCanvas().style.cursor = ''; popup.remove(); });
-
-      // Upload CSV with geocoding
-      document.getElementById('csvUpload').addEventListener('change', function(e){
-        const file = e.target.files[0];
-        if (!file) return;
-
-        Papa.parse(file, {
-          header: true,
-          complete: async function(results) {
-            const features = [];
-
-            for (const row of results.data) {
-              let lat = parseFloat(row.Latitude);
-              let lng = parseFloat(row.Longitude);
-
-              if ((!lat || !lng) && row.ADDRESS) {
-                try {
-                  const response = await fetch(
-                    `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(row.ADDRESS)}&key=${GOOGLE_MAPS_KEY}`
-                  );
-                  const data = await response.json();
-                  if (data.status === "OK") {
-                    lat = data.results[0].geometry.location.lat;
-                    lng = data.results[0].geometry.location.lng;
-                  }
-                } catch (err) {
-                  console.error("Geocoding failed for:", row.ADDRESS, err);
-                }
-              }
-
-              if (lat && lng) {
-                features.push({
-                  type: "Feature",
-                  geometry: { type: "Point", coordinates: [lng, lat] },
-                  properties: {
-                    officeName: row["Client and Project Name"],
-                    address: row.ADDRESS,
-                    state: row["STATE / PROVINCE"]
-                  }
-                });
-              }
-            }
-
-            const uploadedGeojson = { type:"FeatureCollection", features };
-
-            if (map.getLayer(uploadedLayerId)) {
-              map.removeLayer(uploadedLayerId);
-              map.removeSource(uploadedLayerId);
-            }
-            map.addSource(uploadedLayerId, { type:"geojson", data: uploadedGeojson });
-            map.addLayer({
-              id: uploadedLayerId,
-              type: "circle",
-              source: uploadedLayerId,
-              paint: { "circle-radius": 6, "circle-color": document.getElementById('colorPicker').value }
-            });
-
-            map.on('mouseenter', uploadedLayerId, (e) => {
-              map.getCanvas().style.cursor = 'pointer';
-              const props = e.features[0].properties;
-              popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
-                `<span style="font-weight:bold; color:#009DE0;">${props.officeName || ''}</span><br>${props.address || ''}`
-              ).addTo(map);
-            });
-            map.on('mouseleave', uploadedLayerId, () => { map.getCanvas().style.cursor = ''; popup.remove(); });
-          }
-        });
-      });
-
-      // Color picker + HEX input sync
-      const colorInput = document.getElementById('colorPicker');
-      const hexInput = document.getElementById('hexInput');
-
-      function updateColor(val) {
-        hexInput.value = val.toUpperCase();
-        if (map.getLayer(uploadedLayerId)) {
-          map.setPaintProperty(uploadedLayerId, 'circle-color', val);
-        }
-      }
-
-      colorInput.addEventListener('input', () => updateColor(colorInput.value));
-      hexInput.addEventListener('input', () => {
-        const val = hexInput.value;
-        if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
-          colorInput.value = val;
-          updateColor(val);
-        }
-      });
-
-      // Revert to original map (also clears filters)
-      document.getElementById('revertMap').addEventListener('click', () => {
-        if (map.getLayer(uploadedLayerId)) {
-          map.removeLayer(uploadedLayerId);
-          map.removeSource(uploadedLayerId);
-        }
-        regionSelect.selectedIndex = -1;
-        buSelect.selectedIndex = -1;
-        map.getSource('offices').setData(originalGeojson);
-      });
-
-      // Export to PNG (captures everything in #map)
-      document.getElementById('exportMap').addEventListener('click', () => {
-        const mapContainer = document.getElementById('map');
-        html2canvas(mapContainer, { useCORS: true }).then(canvas => {
-          const img = canvas.toDataURL("image/png");
-          const link = document.createElement('a');
-          link.href = img;
-          link.download = "map-export.png";
-          link.click();
-        });
-      });
-
-    } catch (err) {
-      console.error('Error loading dataset:', err);
+// ===== Add Layers =====
+function addOfficeLayer(data) {
+  if (map.getSource("offices")) {
+    map.getSource("offices").setData(data);
+    return;
+  }
+  map.addSource("offices", { type: "geojson", data: data });
+  map.addLayer({
+    id: "offices-layer",
+    type: "circle",
+    source: "offices",
+    paint: {
+      "circle-radius": 6,
+      "circle-color": "#ff5722",
+      "circle-stroke-width": 1,
+      "circle-stroke-color": "#fff"
     }
   });
+}
+
+function addUploadLayer(data, color) {
+  if (map.getSource("uploads")) {
+    map.getSource("uploads").setData(data);
+    map.setPaintProperty("uploads-layer", "circle-color", color);
+    return;
+  }
+  map.addSource("uploads", { type: "geojson", data: data });
+  map.addLayer({
+    id: "uploads-layer",
+    type: "circle",
+    source: "uploads",
+    paint: {
+      "circle-radius": 7,
+      "circle-color": color,
+      "circle-stroke-width": 2,
+      "circle-stroke-color": "#fff"
+    }
+  });
+}
+
+// ===== Filtering =====
+function applyFilters() {
+  if (!officeData) return;
+
+  const stateSel = Array.from(document.getElementById("stateFilter").selectedOptions).map(o => o.value);
+  const buSel = Array.from(document.getElementById("buFilter").selectedOptions).map(o => o.value);
+
+  const filtered = {
+    type: "FeatureCollection",
+    features: officeData.features.filter(f => {
+      const stateOk = stateSel.length === 0 || stateSel.includes(f.properties["STATE / PROVINCE"]);
+      const buOk = buSel.length === 0 || buSel.includes(f.properties["BU"]);
+      return stateOk && buOk;
+    })
+  };
+
+  addOfficeLayer(filtered);
+}
+
+// ===== CSV Upload =====
+document.getElementById("csvUpload").addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = evt => {
+    const text = evt.target.result;
+    parseCSV(text);
+  };
+  reader.readAsText(file);
+});
+
+function parseCSV(text) {
+  const rows = text.trim().split("\n").map(r => r.split(","));
+  const headers = rows.shift().map(h => h.trim());
+
+  const latIdx = headers.indexOf("Latitude");
+  const lngIdx = headers.indexOf("Longitude");
+  const addrIdx = headers.indexOf("ADDRESS");
+
+  const feats = rows.map(r => {
+    const lat = parseFloat(r[latIdx]);
+    const lng = parseFloat(r[lngIdx]);
+    if (isNaN(lat) || isNaN(lng)) return null;
+    return {
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [lng, lat] },
+      properties: { address: r[addrIdx] }
+    };
+  }).filter(Boolean);
+
+  uploadedData = { type: "FeatureCollection", features: feats };
+  addUploadLayer(uploadedData, document.getElementById("markerColor").value);
+}
+
+// ===== Color Change =====
+document.getElementById("markerColor").addEventListener("input", e => {
+  if (uploadedData) addUploadLayer(uploadedData, e.target.value);
+});
+
+// ===== Revert =====
+document.getElementById("revertBtn").addEventListener("click", () => {
+  document.getElementById("stateFilter").selectedIndex = -1;
+  document.getElementById("buFilter").selectedIndex = -1;
+  document.getElementById("csvUpload").value = "";
+  document.getElementById("markerColor").value = originalColor;
+  uploadedData = null;
+  if (map.getSource("uploads")) map.removeLayer("uploads-layer"), map.removeSource("uploads");
+  addOfficeLayer(officeData);
+});
+
+// ===== Export =====
+document.getElementById("exportBtn").addEventListener("click", () => {
+  const link = document.createElement("a");
+  link.href = map.getCanvas().toDataURL("image/png");
+  link.download = "map-export.png";
+  link.click();
+});
+
+// ===== On Map Load =====
+map.on("load", () => {
+  // TODO: Load your office data GeoJSON here
+  // Placeholder demo data
+  officeData = {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [-97.333, 32.755] },
+        properties: { "STATE / PROVINCE": "Texas", "BU": "Southwest" }
+      },
+      {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [-79.383, 43.653] },
+        properties: { "STATE / PROVINCE": "Ontario", "BU": "Canada" }
+      }
+    ]
+  };
+  addOfficeLayer(officeData);
+  populateDropdowns(officeData.features);
+
+  document.getElementById("stateFilter").addEventListener("change", applyFilters);
+  document.getElementById("buFilter").addEventListener("change", applyFilters);
+});
 </script>
 </body>
 </html>
