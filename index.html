@@ -47,8 +47,18 @@
 <br>
   <button id="clearFilters">Clear Filters</button>
 <br><br>
-  <label>Upload CSV of Offices</label><br>
-  <input type="file" id="csvUpload" accept=".csv"><br>
+<label>
+  Upload Additional Addresses 
+  <br><span class="subhead">Project or Client Locations</span>
+</label><br>
+<input type="file" id="csvUpload" accept=".csv" />
+<a href="https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/refs/heads/main/MapAddressTemplate.csv" 
+   download="MapAddressTemplate.csv" 
+   style="font-size:12px; display:block; margin-top:4px;">
+  Download Template CSV
+</a>
+  
+  <br>
 <br>
   <label>Marker Color <br><span class="subhead">(for uploaded addresses)</span></label><br>
   <div id="color-picker"></div><br>
@@ -295,3 +305,4 @@
 </script>
 </body>
 </html>
+
