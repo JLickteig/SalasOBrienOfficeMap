@@ -82,6 +82,7 @@
       download template
     </a>
     <input type="file" id="csvUpload" accept=".csv"><br>
+	<div id="uploadStatus" style="font-size:12px; color:#666; margin-top:4px;"></div>
   
     <br>
 
@@ -123,22 +124,29 @@
     let uploadedLayerId = "uploaded-layer";
     let currentMarkerColor = "#000086"; // default color
 
-    // Init Pickr
-    const pickr = Pickr.create({
-      el: '#color-picker',
-      theme: 'classic',
-      default: currentMarkerColor,
-      components: {
-        preview: true,
-        opacity: false,
-        hue: true,
-        interaction: {
-          hex: true,
-          input: true,
-          save: false
-        }
-      }
-    });
+// Init Pickr
+const pickr = Pickr.create({
+  el: '#color-picker',
+  theme: 'classic',
+  default: currentMarkerColor,
+  components: {
+    preview: true,
+    opacity: false,
+    hue: true,
+    interaction: {
+      hex: true,
+      input: true,
+      clear: true,   // 👈 adds an "X" button
+      save: false
+    }
+  }
+});
+
+// Close picker when user clicks X
+pickr.on('clear', () => {
+  pickr.hide();
+});
+
 
     pickr.on('change', (color) => {
       currentMarkerColor = color.toHEXA().toString();
@@ -264,78 +272,92 @@
           popup.remove();
         });
 
-        // CSV Upload
-        document.getElementById('csvUpload').addEventListener('change', function(e){
-          const file = e.target.files[0];
-          if (!file) return;
+// CSV Upload with status updates
+document.getElementById('csvUpload').addEventListener('change', function(e){
+  const file = e.target.files[0];
+  if (!file) return;
 
-          Papa.parse(file, {
-            header: true,
-            complete: async function(results) {
-              const features = [];
+  const statusEl = document.getElementById('uploadStatus');
+  statusEl.textContent = "Uploading...";
 
-              for (const row of results.data) {
-                let lat = parseFloat(row.Latitude);
-                let lng = parseFloat(row.Longitude);
+  Papa.parse(file, {
+    header: true,
+    complete: async function(results) {
+      const features = [];
 
-                if ((!lat || !lng) && row.ADDRESS) {
-                  try {
-                    const response = await fetch(
-                      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(row.ADDRESS)}&key=${GOOGLE_MAPS_KEY}`
-                    );
-                    const data = await response.json();
-                    if (data.status === "OK") {
-                      lat = data.results[0].geometry.location.lat;
-                      lng = data.results[0].geometry.location.lng;
-                    }
-                  } catch (err) {
-                    console.error("Geocoding failed for:", row.ADDRESS, err);
-                  }
-                }
+      for (const row of results.data) {
+        let lat = parseFloat(row.Latitude);
+        let lng = parseFloat(row.Longitude);
 
-                if (lat && lng) {
-                  features.push({
-                    type: "Feature",
-                    geometry: { type: "Point", coordinates: [lng, lat] },
-                    properties: {
-                      officeName: row["LABEL"],
-                      address: row.ADDRESS,
-                      state: row["STATE / PROVINCE"]
-                    }
-                  });
-                }
-              }
+        if ((!lat || !lng) && row.ADDRESS) {
+          try {
+            const response = await fetch(
+              `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(row.ADDRESS)}&key=${GOOGLE_MAPS_KEY}`
+            );
+            const data = await response.json();
+            if (data.status === "OK") {
+              lat = data.results[0].geometry.location.lat;
+              lng = data.results[0].geometry.location.lng;
+            }
+          } catch (err) {
+            console.error("Geocoding failed for:", row.ADDRESS, err);
+          }
+        }
 
-              const uploadedGeojson = { type:"FeatureCollection", features };
-
-              if (map.getLayer(uploadedLayerId)) {
-                map.removeLayer(uploadedLayerId);
-                map.removeSource(uploadedLayerId);
-              }
-
-              map.addSource(uploadedLayerId, { type:"geojson", data: uploadedGeojson });
-              map.addLayer({
-                id: uploadedLayerId,
-                type: "circle",
-                source: uploadedLayerId,
-                paint: { "circle-radius": 6, "circle-color": currentMarkerColor }
-              });
-
-              map.on('mouseenter', uploadedLayerId, (e) => {
-                map.getCanvas().style.cursor = 'pointer';
-                const props = e.features[0].properties;
-                popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
-                  `<span style="font-weight:bold; color:#009DE0;">${props.officeName || ''}</span><br>${props.address || ''}`
-                ).addTo(map);
-              });
-
-              map.on('mouseleave', uploadedLayerId, () => {
-                map.getCanvas().style.cursor = '';
-                popup.remove();
-              });
+        if (lat && lng) {
+          features.push({
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [lng, lat] },
+            properties: {
+              label: row["Label"],   // ✅ updated
+              address: row.ADDRESS,
+              state: row["STATE / PROVINCE"],
+              color: currentMarkerColor
             }
           });
-        });
+        }
+      }
+
+      // After features created
+      if (features.length > 0) {
+        statusEl.textContent = "✅ Upload complete — " + features.length + " locations added.";
+      } else {
+        statusEl.textContent = "⚠️ No valid locations found in the file.";
+      }
+
+      const uploadedGeojson = { type:"FeatureCollection", features };
+
+      if (map.getLayer(uploadedLayerId)) {
+        map.removeLayer(uploadedLayerId);
+        map.removeSource(uploadedLayerId);
+      }
+
+      map.addSource(uploadedLayerId, { type:"geojson", data: uploadedGeojson });
+      map.addLayer({
+        id: uploadedLayerId,
+        type: "circle",
+        source: uploadedLayerId,
+        paint: { "circle-radius": 6, "circle-color": currentMarkerColor }
+      });
+
+      map.on('mouseenter', uploadedLayerId, (e) => {
+        map.getCanvas().style.cursor = 'pointer';
+        const props = e.features[0].properties;
+        popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
+          `<span style="font-weight:bold; color:${props.color || '#009DE0'};">${props.label || ''}</span><br>${props.address || ''}`
+        ).addTo(map);
+      });
+
+      map.on('mouseleave', uploadedLayerId, () => {
+        map.getCanvas().style.cursor = '';
+        popup.remove();
+      });
+    },
+    error: function(err) {
+      statusEl.textContent = "❌ Upload failed: " + err.message;
+    }
+  });
+});
 
         // Revert to original map
         document.getElementById('revertMap').addEventListener('click', () => {
@@ -389,6 +411,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
