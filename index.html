@@ -98,7 +98,8 @@
       container: 'map',
       style: 'mapbox://styles/jacquelickteig/cm19xymc400tt01pde8ul6loi',
       center: [-98.5795, 39.8283],
-      zoom: 3
+      zoom: 3,
+	  preserveDrawingBuffer: true   // 👈 enables capture of WebGL canvas
     });
 
     let originalGeojson = null;
@@ -331,26 +332,17 @@
           map.getSource('offices').setData(originalGeojson);
         });
 
-        // Export to PNG (high-res)
+    // Export map with all visible markers to PNG
 document.getElementById('exportMap').addEventListener('click', () => {
-  const originalPixelRatio = window.devicePixelRatio;
-
-  // temporarily bump resolution
-  Object.defineProperty(window, 'devicePixelRatio', { get: () => 2 }); // 2 = 2x resolution
-  map.resize();
-
-  requestAnimationFrame(() => {
-    const img = map.getCanvas().toDataURL("image/png");
+  html2canvas(document.getElementById('map'), { useCORS: true }).then(canvas => {
+    const img = canvas.toDataURL("image/png");
     const link = document.createElement('a');
     link.href = img;
-    link.download = "map-export@2x.png";
+    link.download = "map-export.png";
     link.click();
-
-    // restore resolution
-    Object.defineProperty(window, 'devicePixelRatio', { get: () => originalPixelRatio });
-    map.resize();
   });
 });
+
 
 
       } catch (err) {
@@ -378,6 +370,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
