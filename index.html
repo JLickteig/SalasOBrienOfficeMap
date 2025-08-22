@@ -124,7 +124,7 @@
       }
     });
 
-    pickr.on('save', (color) => {
+    pickr.on('change', (color) => {
       currentMarkerColor = color.toHEXA().toString();
       if (map.getLayer(uploadedLayerId)) {
         map.setPaintProperty(uploadedLayerId, 'circle-color', currentMarkerColor);
@@ -282,7 +282,7 @@
                     type: "Feature",
                     geometry: { type: "Point", coordinates: [lng, lat] },
                     properties: {
-                      officeName: row["Client and Project Name"],
+                      officeName: row["LABEL"],
                       address: row.ADDRESS,
                       state: row["STATE / PROVINCE"]
                     }
