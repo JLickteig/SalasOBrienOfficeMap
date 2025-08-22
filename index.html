@@ -279,21 +279,20 @@ map.on('mouseleave', 'offices-layer', () => {
 });
 		  
   // Uploaded Popups
-		  map.on('mouseenter', uploadedLayerId, (e) => {
+map.on('mouseenter', uploadedLayerId, (e) => {
   map.getCanvas().style.cursor = 'pointer';
   const props = e.features[0].properties;
-  popup
-    .setLngLat(e.features[0].geometry.coordinates)
-    .setHTML(
-      `<span style="font-weight:bold; color:${props.color || '#009DE0'};">${props.officeName || '[No Label]'}</span><br>${props.address || ''}`
-    )
-    .addTo(map);
+
+  popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
+    `<span style="font-weight:bold; color:${props.color || '#009DE0'};">${props.officeName || '[No Label]'}</span><br>${props.address || ''}`
+  ).addTo(map);
 });
 
 map.on('mouseleave', uploadedLayerId, () => {
   map.getCanvas().style.cursor = '';
   popup.remove();
 });
+
 
 
 // CSV Upload with status updates
@@ -328,19 +327,20 @@ document.getElementById('csvUpload').addEventListener('change', function(e){
           }
         }
 
-        if (lat && lng) {
- features.push({
-  type: "Feature",
-  geometry: { type: "Point", coordinates: [lng, lat] },
-  properties: {
-    officeName: row["LABEL"] ? row["LABEL"].trim() : "",  // ensure it’s set
-    address: row.ADDRESS || "",
-    state: row["STATE / PROVINCE"] || "",
-    color: currentMarkerColor
-  }
-});
+if (lat && lng) {
+  features.push({
+    type: "Feature",
+    geometry: { type: "Point", coordinates: [lng, lat] },
+    properties: {
+      officeName: row["LABEL"] ? row["LABEL"].trim() : "",  // <-- force LABEL into officeName
+      address: row.ADDRESS || "",
+      state: row["STATE / PROVINCE"] || "",
+      phone: row["MAIN PHONE"] || "",
+      color: currentMarkerColor
+    }
+  });
+}
 
-        }
       }
 
       // After features created
@@ -440,6 +440,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
