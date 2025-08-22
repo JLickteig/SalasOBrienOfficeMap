@@ -129,6 +129,7 @@ const pickr = Pickr.create({
   el: '#color-picker',
   theme: 'classic',
   default: currentMarkerColor,
+  closeButton: true,   // 👈 adds the X to close the picker
   components: {
     preview: true,
     opacity: false,
@@ -136,24 +137,22 @@ const pickr = Pickr.create({
     interaction: {
       hex: true,
       input: true,
-      clear: true,   // 👈 adds an "X" button
       save: false
     }
   }
 });
 
-// Close picker when user clicks X
-pickr.on('clear', () => {
-  pickr.hide();
+
+
+pickr.on('change', (color) => {
+  currentMarkerColor = color.toHEXA().toString();
+
+  // Update marker layer immediately if it exists
+  if (map.getLayer(uploadedLayerId)) {
+    map.setPaintProperty(uploadedLayerId, 'circle-color', currentMarkerColor);
+  }
 });
 
-
-    pickr.on('change', (color) => {
-      currentMarkerColor = color.toHEXA().toString();
-      if (map.getLayer(uploadedLayerId)) {
-        map.setPaintProperty(uploadedLayerId, 'circle-color', currentMarkerColor);
-      }
-    });
 
     map.on('load', async () => {
       try {
@@ -411,6 +410,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
