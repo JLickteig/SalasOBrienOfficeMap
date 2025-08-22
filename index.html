@@ -129,7 +129,6 @@ const pickr = Pickr.create({
   el: '#color-picker',
   theme: 'classic',
   default: currentMarkerColor,
-  closeButton: true,   // 👈 adds the X to close the picker
   components: {
     preview: true,
     opacity: false,
@@ -137,21 +136,19 @@ const pickr = Pickr.create({
     interaction: {
       hex: true,
       input: true,
-      save: false
+      cancel: true   // 👈 gives you an X close button
     }
   }
 });
 
-
-
+// Always update the preview + markers as they change
 pickr.on('change', (color) => {
   currentMarkerColor = color.toHEXA().toString();
-
-  // Update marker layer immediately if it exists
   if (map.getLayer(uploadedLayerId)) {
     map.setPaintProperty(uploadedLayerId, 'circle-color', currentMarkerColor);
   }
 });
+
 
 
     map.on('load', async () => {
@@ -308,7 +305,7 @@ document.getElementById('csvUpload').addEventListener('change', function(e){
             type: "Feature",
             geometry: { type: "Point", coordinates: [lng, lat] },
             properties: {
-              label: row["Label"],   // ✅ updated
+              officeName: row["LABEL"],   // ✅ updated
               address: row.ADDRESS,
               state: row["STATE / PROVINCE"],
               color: currentMarkerColor
@@ -414,6 +411,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
