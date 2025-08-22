@@ -40,17 +40,25 @@
 
     .mapboxgl-popup { font-family: sans-serif; font-size: 13px; }
     .mapboxgl-popup-content { white-space: pre-line; }
-  .color-picker-row {
+.color-picker-row {
   display: flex;
-  align-items: center;   /* aligns picker and label vertically */
-  gap: 8px;
+  align-items: center;   /* vertical centering */
+  gap: 10px;
+}
+
+#color-picker {
+  height: 28px;          /* force consistent box size */
+  width: 28px;
+  flex-shrink: 0;        /* prevent squishing */
 }
 
 .color-picker-row label {
   display: flex;
-  flex-direction: column;  /* stack text + subhead */
-  justify-content: center; /* center text vertically with picker */
+  flex-direction: column;  
+  line-height: 1.2;      /* tighten up label + subhead */
+  justify-content: center;
 }
+
 
 
   </style>
@@ -381,6 +389,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
