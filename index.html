@@ -329,16 +329,16 @@ document.getElementById('csvUpload').addEventListener('change', function(e){
 
 if (lat && lng) {
   features.push({
-    type: "Feature",
-    geometry: { type: "Point", coordinates: [lng, lat] },
-    properties: {
-      officeName: row["LABEL"] ? row["LABEL"].trim() : "",  // <-- force LABEL into officeName
-      address: row.ADDRESS || "",
-      state: row["STATE / PROVINCE"] || "",
-      phone: row["MAIN PHONE"] || "",
-      color: currentMarkerColor
-    }
-  });
+  type: "Feature",
+  geometry: { type: "Point", coordinates: [lng, lat] },
+  properties: {
+    officeName: row["LABEL"] || row["Label"] || "",   // ✅ covers both cases
+    address: row.ADDRESS || "",
+    state: row["STATE / PROVINCE"] || "",
+    color: currentMarkerColor
+  }
+});
+console.log("Uploaded feature:", features[features.length - 1].properties);
 }
 
       }
@@ -440,6 +440,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
