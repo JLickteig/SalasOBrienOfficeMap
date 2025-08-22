@@ -260,7 +260,7 @@ pickr.on('change', (color) => {
         map.on('mouseenter', 'offices-layer', (e) => {
           map.getCanvas().style.cursor = 'pointer';
           const props = e.features[0].properties;
-          const html = `<span style="font-weight:bold; color:${props.color || '#009DE0'};">${props.LABEL || ''}</span><br>${props.address || ''}`
+          const html = `<span style="font-weight:bold; color:#009DE0;">${props.officeName || ''}</span><br>${props.address || ''}<br>${props.phone || ''}`;
           popup.setLngLat(e.features[0].geometry.coordinates).setHTML(html).addTo(map);
         });
         map.on('mouseleave', 'offices-layer', () => {
@@ -300,19 +300,19 @@ document.getElementById('csvUpload').addEventListener('change', function(e){
           }
         }
 
-       if (lat && lng) {
-  features.push({
-    type: "Feature",
-    geometry: { type: "Point", coordinates: [lng, lat] },
-    properties: {
-      LABEL: row["LABEL"],   // ✅ store using the exact CSV header
-      address: row.ADDRESS,
-      state: row["STATE / PROVINCE"],
-      color: currentMarkerColor
-    }
-  });
-}
-
+        if (lat && lng) {
+          features.push({
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [lng, lat] },
+            properties: {
+              officeName: row["LABEL"],   // ✅ updated
+              address: row.ADDRESS,
+              state: row["STATE / PROVINCE"],
+              color: currentMarkerColor
+            }
+          });
+        }
+      }
 
       // After features created
       if (features.length > 0) {
@@ -411,11 +411,6 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
-
-
-
-
-
 
 
 
