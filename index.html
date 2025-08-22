@@ -283,9 +283,10 @@ map.on('mouseenter', uploadedLayerId, (e) => {
   map.getCanvas().style.cursor = 'pointer';
   const props = e.features[0].properties;
 
-  popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
-    `<span style="font-weight:bold; color:${props.color || '#009DE0'};">${props.officeName || '[No Label]'}</span><br>${props.address || ''}`
-  ).addTo(map);
+popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
+  `<span style="font-weight:bold; color:${props.color || '#009DE0'};">${props.officeName || '[No Label]'}</span><br>${props.address || ''}`
+).addTo(map);
+
 });
 
 map.on('mouseleave', uploadedLayerId, () => {
@@ -440,6 +441,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
