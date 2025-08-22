@@ -331,17 +331,27 @@
           map.getSource('offices').setData(originalGeojson);
         });
 
-        // Export to PNG
-        document.getElementById('exportMap').addEventListener('click', () => {
-          const mapContainer = document.getElementById('map');
-          html2canvas(mapContainer, { useCORS: true }).then(canvas => {
-            const img = canvas.toDataURL("image/png");
-            const link = document.createElement('a');
-            link.href = img;
-            link.download = "map-export.png";
-            link.click();
-          });
-        });
+        // Export to PNG (high-res)
+document.getElementById('exportMap').addEventListener('click', () => {
+  const originalPixelRatio = window.devicePixelRatio;
+
+  // temporarily bump resolution
+  Object.defineProperty(window, 'devicePixelRatio', { get: () => 2 }); // 2 = 2x resolution
+  map.resize();
+
+  requestAnimationFrame(() => {
+    const img = map.getCanvas().toDataURL("image/png");
+    const link = document.createElement('a');
+    link.href = img;
+    link.download = "map-export@2x.png";
+    link.click();
+
+    // restore resolution
+    Object.defineProperty(window, 'devicePixelRatio', { get: () => originalPixelRatio });
+    map.resize();
+  });
+});
+
 
       } catch (err) {
         console.error('Error loading dataset:', err);
@@ -368,6 +378,7 @@
   </script>
 </body>
 </html>
+
 
 
 
