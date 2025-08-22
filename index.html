@@ -32,7 +32,7 @@
     }
 
     label { font-weight:bold; margin-bottom:8px; }
-    .subhead { font-weight:normal; font-size:12px; display:block; margin-top:-2px; }
+    .subhead { font-weight:normal; font-size:12px; display:block; margin-top:2px; }
     select { margin:5px 0; width:100%; }
     button { margin:5px 0; padding:5px 5px; width:100%; }
     input[type="file"] { margin:5px 0; width:100%; }
@@ -40,11 +40,18 @@
 
     .mapboxgl-popup { font-family: sans-serif; font-size: 13px; }
     .mapboxgl-popup-content { white-space: pre-line; }
-    .color-picker-row {
+  .color-picker-row {
   display: flex;
-  align-items: center;
-  gap: 8px; /* space between picker and label */
+  align-items: center;   /* aligns picker and label vertically */
+  gap: 8px;
 }
+
+.color-picker-row label {
+  display: flex;
+  flex-direction: column;  /* stack text + subhead */
+  justify-content: center; /* center text vertically with picker */
+}
+
 
   </style>
 </head>
@@ -63,14 +70,14 @@
 
     <label>Additional Addresses</label>
     <span class="subhead">Upload a .csv file of client or project locations</span>
-	  <a href="#" id="downloadTemplate" style="display:inline-block; margin-top:6px; font-size:13px; text-decoration:underline; color:#009de0; cursor:pointer;">
+	  <a href="#" id="downloadTemplate" style="display:inline-block; margin-top:2px; margin-bottom: 6px; font-size:13px; text-decoration:underline; color:#009de0; cursor:pointer;">
       download template
     </a>
     <input type="file" id="csvUpload" accept=".csv"><br>
   
-    <br><br>
+    <br>
 
-    <div class="color-picker-row">
+<div class="color-picker-row">
   <div id="color-picker"></div>
   <label>
     Marker Color 
@@ -78,6 +85,7 @@
   </label>
 </div>
 <br>
+
 
 
     <hr><br>
@@ -373,6 +381,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
