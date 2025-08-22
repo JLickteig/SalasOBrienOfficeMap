@@ -135,8 +135,7 @@ const pickr = Pickr.create({
     hue: true,
     interaction: {
       hex: true,
-      input: true,
-      cancel: true   // 👈 gives you an X close button
+      input: true
     }
   }
 });
@@ -144,10 +143,15 @@ const pickr = Pickr.create({
 // Always update the preview + markers as they change
 pickr.on('change', (color) => {
   currentMarkerColor = color.toHEXA().toString();
+
+  // ✅ force preview square to update
+  pickr.applyColor(true);
+
   if (map.getLayer(uploadedLayerId)) {
     map.setPaintProperty(uploadedLayerId, 'circle-color', currentMarkerColor);
   }
 });
+
 
 
 
@@ -411,6 +415,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
