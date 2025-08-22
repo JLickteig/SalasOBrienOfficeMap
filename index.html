@@ -358,19 +358,23 @@ document.getElementById('csvUpload').addEventListener('change', function(e){
   });
 });
 
-        // Revert to original map
-        document.getElementById('revertMap').addEventListener('click', () => {
-          if (map.getLayer(uploadedLayerId)) {
-            map.removeLayer(uploadedLayerId);
-            map.removeSource(uploadedLayerId);
-          }
-          regionSelect.selectedIndex = -1;
-          buSelect.selectedIndex = -1;
-          pickr.setColor("#000086");
-          currentMarkerColor = "#000086";
-          document.getElementById('csvUpload').value = "";
-          map.getSource('offices').setData(originalGeojson);
-        });
+// Revert to original map
+document.getElementById('revertMap').addEventListener('click', () => {
+  if (map.getLayer(uploadedLayerId)) {
+    map.removeLayer(uploadedLayerId);
+    map.removeSource(uploadedLayerId);
+  }
+  regionSelect.selectedIndex = -1;
+  buSelect.selectedIndex = -1;
+  pickr.setColor("#000086");
+  currentMarkerColor = "#000086";
+  document.getElementById('csvUpload').value = "";
+  map.getSource('offices').setData(originalGeojson);
+
+  // ✅ Clear upload status text
+  document.getElementById('uploadStatus').textContent = "";
+});
+
 
     // Export map with all visible markers to PNG
 document.getElementById('exportMap').addEventListener('click', () => {
@@ -410,6 +414,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
