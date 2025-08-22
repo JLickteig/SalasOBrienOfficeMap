@@ -63,10 +63,11 @@
 
     <label>Additional Addresses</label>
     <span class="subhead">Upload a .csv file of client or project locations</span>
-    <input type="file" id="csvUpload" accept=".csv"><br>
-    <a href="#" id="downloadTemplate" style="display:inline-block; margin-top:6px; font-size:13px; text-decoration:underline; color:#009de0; cursor:pointer;">
+	  <a href="#" id="downloadTemplate" style="display:inline-block; margin-top:6px; font-size:13px; text-decoration:underline; color:#009de0; cursor:pointer;">
       download template
     </a>
+    <input type="file" id="csvUpload" accept=".csv"><br>
+  
     <br><br>
 
     <div class="color-picker-row">
@@ -118,7 +119,7 @@
         interaction: {
           hex: true,
           input: true,
-          save: true
+          save: false
         }
       }
     });
@@ -154,14 +155,6 @@
         const provinces = [...new Set(geojson.features.filter(f => f.properties.country === "CAN").map(f => f.properties.state).filter(Boolean))].sort();
         const bus = [...new Set(geojson.features.map(f => f.properties.bu).filter(Boolean))].sort();
 
-        const usGroup = document.createElement('optgroup');
-        usGroup.label = "United States";
-        states.forEach(s => {
-          const opt=document.createElement('option');
-          opt.value="US|"+s;
-          opt.textContent=s;
-          usGroup.appendChild(opt);
-        });
 
         const caGroup = document.createElement('optgroup');
         caGroup.label = "Canada";
@@ -171,9 +164,19 @@
           opt.textContent=p;
           caGroup.appendChild(opt);
         });
+		
+	   const usGroup = document.createElement('optgroup');
+        usGroup.label = "United States";
+        states.forEach(s => {
+          const opt=document.createElement('option');
+          opt.value="US|"+s;
+          opt.textContent=s;
+          usGroup.appendChild(opt);
+        });
 
-        regionSelect.appendChild(usGroup);
-        regionSelect.appendChild(caGroup);
+         regionSelect.appendChild(caGroup);
+		 regionSelect.appendChild(usGroup);
+       
 
         bus.forEach(b => {
           const opt=document.createElement('option');
