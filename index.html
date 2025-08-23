@@ -20,6 +20,7 @@
   body { 
     margin: 0; 
     padding: 0; 
+    font-family: Arial, sans-serif;
   }
 
   #map { 
@@ -31,55 +32,60 @@
 
   #filters {
     position: absolute;
-    top: 10px;
-    left: 10px;
+    top: 1vh;
+    left: 1vw;
     background: #fff;
-    padding: clamp(8px, 1vw, 16px);
+    padding: clamp(6px, 1vh, 12px);
     border-radius: 4px;
-    font-family: sans-serif;
+    font-family: Arial, sans-serif;
     z-index: 1;
 
     /* Responsive panel sizing */
-    width: clamp(200px, 25vw, 400px);
-    max-height: calc(100vh - 20px);
-    overflow-y: auto;
+    width: clamp(180px, 22vw, 360px);
+    height: calc(98vh - 2vh); /* always fit on screen */
+    
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: clamp(6px, 1vh, 12px);
   }
 
   /* Typography scales */
   #filters label {
     font-weight: bold;
-    margin-bottom: clamp(4px, 0.5vw, 8px);
-    font-size: clamp(12px, 1.2vw, 16px);
+    font-size: clamp(11px, 1.5vh, 16px);
   }
 
   #filters .subhead {
     font-weight: normal;
-    font-size: clamp(10px, 1vw, 14px);
+    font-size: clamp(9px, 1.2vh, 14px);
     display: block;
-    margin-top: clamp(2px, 0.3vw, 6px);
   }
 
-  /* Form controls scale */
+  /* Controls scale to fit height */
   #filters select,
   #filters button,
   #filters input[type="file"] {
     width: 100%;
-    margin: clamp(4px, 0.5vw, 8px) 0;
-    font-size: clamp(12px, 1vw, 14px);
-    padding: clamp(4px, 0.6vw, 8px);
+    font-size: clamp(11px, 1.2vh, 14px);
+    padding: clamp(3px, 0.8vh, 8px);
+    font-family: Arial, sans-serif;
   }
 
-  /* Color picker row scales */
+  /* Let selects shrink dynamically with screen height */
+  #regionFilter { flex: 1; min-height: 12%; }
+  #buFilter { flex: 1; min-height: 10%; }
+
+  /* Color picker row */
   .color-picker-row {
     display: flex;
     align-items: flex-start;
-    gap: clamp(6px, 1vw, 12px);
-    margin: clamp(4px, 0.5vw, 8px) 0;
+    gap: clamp(6px, 1vh, 12px);
   }
 
   #color-picker {
-    height: clamp(20px, 2vw, 28px);
-    width: clamp(20px, 2vw, 28px);
+    height: clamp(18px, 2vh, 28px);
+    width: clamp(18px, 2vh, 28px);
     flex-shrink: 0;
   }
 
@@ -87,17 +93,15 @@
     display: flex;
     flex-direction: column;
     line-height: 1.2;
+    font-size: clamp(10px, 1.3vh, 14px);
   }
 
   /* Popups */
   .mapboxgl-popup { 
-    font-family: sans-serif; 
-    font-size: clamp(11px, 1vw, 13px); 
+    font-family: Arial, sans-serif; 
+    font-size: clamp(11px, 1.3vh, 13px); 
   }
-  
-  .mapboxgl-popup-content { 
-    white-space: pre-line; 
-  }
+  .mapboxgl-popup-content { white-space: pre-line; }
 </style>
 
 </head>
@@ -489,5 +493,6 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
