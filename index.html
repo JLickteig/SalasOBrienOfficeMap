@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/classic.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
 
-  <style>
+<style>
   body { 
     margin: 0; 
     padding: 0; 
@@ -40,15 +40,11 @@
     font-family: Arial, sans-serif;
     z-index: 1;
 
-    /* Balanced width */
     width: clamp(220px, 22vw, 320px);
 
-    /* Never overflow */
+    /* Fit on screen without hiding content */
     max-height: 96vh;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    overflow-y: auto;
 
     box-sizing: border-box;
   }
@@ -57,6 +53,7 @@
   #filters label {
     font-weight: bold;
     font-size: clamp(13px, 1.1vw, 15px);
+    margin-bottom: 2px;
   }
 
   #filters .subhead {
@@ -64,6 +61,7 @@
     font-size: clamp(11px, 1vw, 13px);
     display: block;
     line-height: 1.3;
+    margin-bottom: 6px;
   }
 
   /* Form controls */
@@ -72,19 +70,23 @@
   #filters input[type="file"] {
     width: 100%;
     font-size: clamp(12px, 1vw, 14px);
-    padding: 6px;
+    padding: 5px;
+    margin-bottom: 8px; /* tighter vertical spacing */
     font-family: Arial, sans-serif;
   }
 
-  /* Give selects some breathing room but not oversized */
-  #regionFilter { flex: 1; min-height: 100px; }
-  #buFilter { flex: 1; min-height: 70px; }
+  /* Remove unnecessary stretching */
+  #regionFilter,
+  #buFilter {
+    min-height: unset;
+  }
 
   /* Color picker row */
   .color-picker-row {
     display: flex;
-    align-items: flex-start;
-    gap: 8px;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
   }
 
   #color-picker {
@@ -497,6 +499,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
