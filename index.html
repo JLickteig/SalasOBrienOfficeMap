@@ -17,98 +17,62 @@
   <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
 
 <style>
-  body { 
-    margin: 0; 
-    padding: 0; 
-    font-family: Arial, sans-serif;
-  }
+  body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+  #map { position: absolute; top: 0; bottom: 0; width: 100%; }
 
-  #map { 
-    position: absolute; 
-    top: 0; 
-    bottom: 0; 
-    width: 100%; 
-  }
-
+  /* Filters panel */
   #filters {
     position: absolute;
-    top: 1vh;
-    left: 1vw;
+    top: 10px;
+    left: 10px;
     background: #fff;
-    padding: 12px;
-    border-radius: 6px;
-    font-family: Arial, sans-serif;
+    padding: 10px;
+    border-radius: 4px;
     z-index: 1;
-
-    width: clamp(220px, 22vw, 320px);
-
-    /* Fit on screen without hiding content */
-    max-height: 96vh;
-    overflow-y: auto;
-
-    box-sizing: border-box;
+    max-width: 260px;
+    transform-origin: top left; /* scale relative to top-left corner */
   }
 
-  /* Labels and text */
-  #filters label {
-    font-weight: bold;
-    font-size: clamp(13px, 1.1vw, 15px);
-    margin-bottom: 2px;
-  }
+  /* Typography */
+  label { font-weight: bold; margin-bottom: 6px; font-size: 14px; }
+  .subhead { font-weight: normal; font-size: 12px; display: block; margin-top: 2px; }
+  .mapboxgl-popup { font-family: Arial, sans-serif; font-size: 13px; }
+  .mapboxgl-popup-content { white-space: pre-line; }
 
-  #filters .subhead {
-    font-weight: normal;
-    font-size: clamp(11px, 1vw, 13px);
-    display: block;
-    line-height: 1.3;
-    margin-bottom: 6px;
-  }
-
-  /* Form controls */
-  #filters select,
-  #filters button,
-  #filters input[type="file"] {
+  /* Form elements */
+  select { margin: 5px 0; width: 100%; font-size: 13px; }
+  button {
+    margin: 5px 0;
+    padding: 5px 5px;
     width: 100%;
-    font-size: clamp(12px, 1vw, 14px);
-    padding: 5px;
-    margin-bottom: 8px; /* tighter vertical spacing */
-    font-family: Arial, sans-serif;
+    font-size: 13px;
+    cursor: pointer;
   }
-
-  /* Remove unnecessary stretching */
-  #regionFilter,
-  #buFilter {
-    min-height: unset;
+  input[type="file"] {
+    margin: 5px 0;
+    width: 100%;
+    font-size: 13px;
   }
+  #color-picker { margin: 5px 0; }
 
   /* Color picker row */
   .color-picker-row {
     display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 8px;
+    align-items: flex-start;
+    gap: 10px;
   }
-
   #color-picker {
-    height: 24px;
-    width: 24px;
+    height: 28px;
+    width: 28px;
     flex-shrink: 0;
   }
-
   .color-picker-row label {
     display: flex;
     flex-direction: column;
     line-height: 1.2;
-    font-size: clamp(12px, 1vw, 14px);
   }
-
-  /* Popups */
-  .mapboxgl-popup { 
-    font-family: Arial, sans-serif; 
-    font-size: 13px; 
-  }
-  .mapboxgl-popup-content { white-space: pre-line; }
 </style>
+
 
 </head>
 <body>
@@ -208,6 +172,18 @@ pickr.on('change', (color) => {
 });
 
 
+function scaleFiltersPanel() {
+  const panel = document.getElementById('filters');
+  const vh = window.innerHeight;
+  const panelHeight = panel.scrollHeight;
+
+  // scale down if taller than viewport - 20px padding
+  const scale = Math.min(1, (vh - 20) / panelHeight);
+  panel.style.transform = `scale(${scale})`;
+}
+
+window.addEventListener('resize', scaleFiltersPanel);
+window.addEventListener('load', scaleFiltersPanel);
 
 
     map.on('load', async () => {
@@ -499,6 +475,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
