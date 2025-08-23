@@ -20,16 +20,49 @@
     body { margin:0; padding:0; }
     #map { position:absolute; top:0; bottom:0; width:100%; }
 
-    #filters {
-      position:absolute;
-      top:10px; left:10px;
-      background:#fff;
-      padding:10px;
-      border-radius:4px;
-      font-family:sans-serif;
-      z-index:1;
-      max-width:260px;
-    }
+#filters {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: #fff;
+  padding: 10px;
+  border-radius: 4px;
+  font-family: sans-serif;
+  z-index: 1;
+
+  /* Dynamic width & height */
+  width: clamp(200px, 25vw, 400px);
+  max-height: calc(100vh - 20px);
+  overflow-y: auto;
+}
+
+/* Scale text */
+#filters label {
+  font-weight: bold;
+  font-size: clamp(12px, 1.2vw, 16px);
+}
+#filters .subhead {
+  font-size: clamp(10px, 1vw, 14px);
+}
+#filters button,
+#filters select,
+#filters input[type="file"] {
+  font-size: clamp(12px, 1vw, 14px);
+  padding: clamp(4px, 0.6vw, 8px);
+}
+
+/* Scale color picker row */
+.color-picker-row {
+  display: flex;
+  align-items: flex-start;
+  gap: clamp(6px, 1vw, 12px);
+}
+#color-picker {
+  height: clamp(20px, 2vw, 28px);
+  width: clamp(20px, 2vw, 28px);
+  flex-shrink: 0;
+}
+
 
     label { font-weight:bold; margin-bottom:8px; }
     .subhead { font-weight:normal; font-size:12px; display:block; margin-top:2px; }
@@ -451,3 +484,4 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
