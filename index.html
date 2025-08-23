@@ -17,84 +17,89 @@
   <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
 
   <style>
-    body { margin:0; padding:0; }
-    #map { position:absolute; top:0; bottom:0; width:100%; }
+  body { 
+    margin: 0; 
+    padding: 0; 
+  }
 
-#filters {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  background: #fff;
-  padding: 10px;
-  border-radius: 4px;
-  font-family: sans-serif;
-  z-index: 1;
+  #map { 
+    position: absolute; 
+    top: 0; 
+    bottom: 0; 
+    width: 100%; 
+  }
 
-  /* Dynamic width & height */
-  width: clamp(200px, 25vw, 400px);
-  max-height: calc(100vh - 20px);
-  overflow-y: auto;
-}
+  #filters {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: #fff;
+    padding: clamp(8px, 1vw, 16px);
+    border-radius: 4px;
+    font-family: sans-serif;
+    z-index: 1;
 
-/* Scale text */
-#filters label {
-  font-weight: bold;
-  font-size: clamp(12px, 1.2vw, 16px);
-}
-#filters .subhead {
-  font-size: clamp(10px, 1vw, 14px);
-}
-#filters button,
-#filters select,
-#filters input[type="file"] {
-  font-size: clamp(12px, 1vw, 14px);
-  padding: clamp(4px, 0.6vw, 8px);
-}
+    /* Responsive panel sizing */
+    width: clamp(200px, 25vw, 400px);
+    max-height: calc(100vh - 20px);
+    overflow-y: auto;
+  }
 
-/* Scale color picker row */
-.color-picker-row {
-  display: flex;
-  align-items: flex-start;
-  gap: clamp(6px, 1vw, 12px);
-}
-#color-picker {
-  height: clamp(20px, 2vw, 28px);
-  width: clamp(20px, 2vw, 28px);
-  flex-shrink: 0;
-}
+  /* Typography scales */
+  #filters label {
+    font-weight: bold;
+    margin-bottom: clamp(4px, 0.5vw, 8px);
+    font-size: clamp(12px, 1.2vw, 16px);
+  }
 
+  #filters .subhead {
+    font-weight: normal;
+    font-size: clamp(10px, 1vw, 14px);
+    display: block;
+    margin-top: clamp(2px, 0.3vw, 6px);
+  }
 
-    label { font-weight:bold; margin-bottom:8px; }
-    .subhead { font-weight:normal; font-size:12px; display:block; margin-top:2px; }
-    select { margin:5px 0; width:100%; }
-    button { margin:5px 0; padding:5px 5px; width:100%; }
-    input[type="file"] { margin:5px 0; width:100%; }
-    #color-picker { margin:5px 0; }
+  /* Form controls scale */
+  #filters select,
+  #filters button,
+  #filters input[type="file"] {
+    width: 100%;
+    margin: clamp(4px, 0.5vw, 8px) 0;
+    font-size: clamp(12px, 1vw, 14px);
+    padding: clamp(4px, 0.6vw, 8px);
+  }
 
-    .mapboxgl-popup { font-family: sans-serif; font-size: 13px; }
-    .mapboxgl-popup-content { white-space: pre-line; }
-	  
-.color-picker-row {
-  display: flex;
-  align-items: flex-start;  /* align items to the top */
-  gap: 10px;
-}
+  /* Color picker row scales */
+  .color-picker-row {
+    display: flex;
+    align-items: flex-start;
+    gap: clamp(6px, 1vw, 12px);
+    margin: clamp(4px, 0.5vw, 8px) 0;
+  }
 
-#color-picker {
-  height: 28px;
-  width: 28px;
-  flex-shrink: 0;
-}
+  #color-picker {
+    height: clamp(20px, 2vw, 28px);
+    width: clamp(20px, 2vw, 28px);
+    flex-shrink: 0;
+  }
 
-.color-picker-row label {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.2;
-}
+  .color-picker-row label {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+  }
 
+  /* Popups */
+  .mapboxgl-popup { 
+    font-family: sans-serif; 
+    font-size: clamp(11px, 1vw, 13px); 
+  }
+  
+  .mapboxgl-popup-content { 
+    white-space: pre-line; 
+  }
+</style>
 
-
-  </style>
 </head>
 <body>
   <!-- Sidebar Filters -->
@@ -484,4 +489,5 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
