@@ -16,99 +16,52 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/classic.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
 
-<style>
-  body { margin:0; padding:0; }
-  #map { position:absolute; top:0; bottom:0; width:100%; }
+  <style>
+    body { margin:0; padding:0; }
+    #map { position:absolute; top:0; bottom:0; width:100%; }
 
-  #filters {
-    position:absolute;
-    top:10px;
-    left:10px;
-    background:#fff;
-    padding:10px;
-    border-radius:4px;
-    font-family:sans-serif;
-    z-index:1;
-
-    /* ✅ Responsive */
-    max-width:90vw;      
-    max-height:90vh;     
-    overflow-y:auto;     
-    box-sizing:border-box;
-  }
-
-  label { font-weight:bold; margin-bottom:8px; }
-  .subhead { font-weight:normal; font-size:12px; display:block; margin-top:2px; }
-
-  /* ✅ Make form controls scale to panel */
-  select,
-  button,
-  input[type="file"] {
-    width:100%;
-    max-width:100%;
-    box-sizing:border-box;
-  }
-
-  .mapboxgl-popup { font-family:sans-serif; font-size:13px; }
-  .mapboxgl-popup-content { white-space:pre-line; }
-  
-  .color-picker-row {
-    display:flex;
-    align-items:flex-start;
-    gap:10px;
-  }
-
-  #color-picker {
-    height:28px;
-    width:28px;
-    flex-shrink:0;
-  }
-
-  .color-picker-row label {
-    display:flex;
-    flex-direction:column;
-    line-height:1.2;
-  }
-
-  /* ✅ Mobile behavior */
-  @media (max-width:600px) {
     #filters {
-      top:auto;
-      bottom:0;
-      left:0;
-      right:0;
-      width:100%;
-      max-height:40vh;
-      border-radius:0;
+      position:absolute;
+      top:10px; left:10px;
+      background:#fff;
+      padding:10px;
+      border-radius:4px;
+      font-family:sans-serif;
+      z-index:1;
+      max-width:260px;
     }
-  }
 
-	#toggleFilters {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 2;
-  background: #009DE0;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  padding: 6px 10px;
-  font-size: 14px;
-  cursor: pointer;
-  display: none; /* hidden by default */
+    label { font-weight:bold; margin-bottom:8px; }
+    .subhead { font-weight:normal; font-size:12px; display:block; margin-top:2px; }
+    select { margin:5px 0; width:100%; }
+    button { margin:5px 0; padding:5px 5px; width:100%; }
+    input[type="file"] { margin:5px 0; width:100%; }
+    #color-picker { margin:5px 0; }
+
+    .mapboxgl-popup { font-family: sans-serif; font-size: 13px; }
+    .mapboxgl-popup-content { white-space: pre-line; }
+	  
+.color-picker-row {
+  display: flex;
+  align-items: flex-start;  /* align items to the top */
+  gap: 10px;
 }
 
-/* Show the toggle button on small screens */
-@media (max-width: 600px) {
-  #toggleFilters {
-    display: block;
-  }
+#color-picker {
+  height: 28px;
+  width: 28px;
+  flex-shrink: 0;
 }
 
-</style>
+.color-picker-row label {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
 
 
-	
+
+  </style>
 </head>
 <body>
   <!-- Sidebar Filters -->
@@ -148,7 +101,6 @@
     <button id="revertMap">Revert to Base Map</button><br>
     <button id="exportMap">Export Map as PNG</button>
   </div>
-<button id="toggleFilters">☰ Filters</button>
 
   <!-- Map Container -->
   <div id="map"></div>
@@ -496,42 +448,6 @@ document.getElementById('exportMap').addEventListener('click', () => {
         console.error("Failed to download template:", err);
       }
     });
-
-	  const toggleBtn = document.getElementById('toggleFilters');
-const filtersPanel = document.getElementById('filters');
-
-toggleBtn.addEventListener('click', () => {
-  filtersPanel.classList.toggle('hidden');
-  if (filtersPanel.classList.contains('hidden')) {
-    filtersPanel.style.display = "none";
-    toggleBtn.textContent = "☰ Show Filters";
-  } else {
-    filtersPanel.style.display = "block";
-    toggleBtn.textContent = "✖ Hide Filters";
-  }
-});
-
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
