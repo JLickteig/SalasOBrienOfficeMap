@@ -143,12 +143,19 @@ const pickr = Pickr.create({
 // Always update the preview + markers as they change
 pickr.on('change', (color) => {
   currentMarkerColor = color.toHEXA().toString();
-
-  // ✅ force preview square to update
   pickr.applyColor(true);
 
   if (map.getLayer(uploadedLayerId)) {
+    // Update marker dot colors
     map.setPaintProperty(uploadedLayerId, 'circle-color', currentMarkerColor);
+
+    // 🔑 Also update the popup header color by rewriting the source data
+    const src = map.getSource(uploadedLayerId);
+    if (src) {
+      const data = src._data; // current geojson
+      data.features.forEach(f => f.properties.color = currentMarkerColor);
+      src.setData(data);
+    }
   }
 });
 
@@ -444,6 +451,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
