@@ -468,43 +468,26 @@ document.getElementById('revertMap').addEventListener('click', () => {
 });
 
 
-  // ✅ Export map to PNG, cropped from left and right
+  // ✅ Export map at fixed 1920x1080, excluding filters/controls
 document.getElementById('exportMap').addEventListener('click', () => {
-  const canvas = map.getCanvas();
+  const mapCanvas = map.getCanvas();
 
-  // Create a new canvas to draw the cropped portion
-  const croppedCanvas = document.createElement('canvas');
-  const ctx = croppedCanvas.getContext('2d');
+  // Create an offscreen canvas at fixed size
+  const exportCanvas = document.createElement('canvas');
+  exportCanvas.width = 1920;
+  exportCanvas.height = 1080;
+  const ctx = exportCanvas.getContext('2d');
 
-  // Convert inches to pixels (96 px per inch for screen density)
-  const dpi = 96;
-  const cropLeft = 7 * dpi;   // 7 inches left
-  const cropRight = 3 * dpi;  // 3 inches right
+  // Scale the map's current canvas into the fixed export size
+  ctx.drawImage(mapCanvas, 0, 0, exportCanvas.width, exportCanvas.height);
 
-  const cropWidth = canvas.width - cropLeft - cropRight;
-  const cropHeight = canvas.height;
-
-  // Set cropped canvas size
-  croppedCanvas.width = cropWidth;
-  croppedCanvas.height = cropHeight;
-
-  // Draw only the desired part of the map canvas
-  ctx.drawImage(
-    canvas,
-    cropLeft, 0,            // start source x,y
-    cropWidth, cropHeight,  // source width/height
-    0, 0,                   // destination x,y
-    cropWidth, cropHeight   // destination width/height
-  );
-
-  // Export to PNG
-  const img = croppedCanvas.toDataURL("image/png");
+  // Convert to PNG and download
+  const img = exportCanvas.toDataURL("image/png");
   const link = document.createElement('a');
   link.href = img;
-  link.download = "map-export-cropped.png";
+  link.download = "map-export.png";
   link.click();
 });
-
 
 
 
@@ -535,6 +518,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
