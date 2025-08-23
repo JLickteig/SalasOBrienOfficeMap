@@ -304,10 +304,11 @@ map.on('mouseenter', 'offices-layer', (e) => {
 popup
   .setLngLat(e.features[0].geometry.coordinates)
   .setHTML(
- `<div style="line-height:1.2;">
+ `<div style="line-height:0.8;">
      <div style="font-weight:bold; color:#009DE0;">${props.officeName || ''}</div>
      <div style="font-size:11px; color:#333;">${props.address || ''}</div>
-     <div style="font-size:11px; color:#666;">${props.phone || ''} ${props.bu || ''}</div>
+     <div style="font-size:11px; color:#666;">${props.phone || ''} </div>
+     <div style="font-size:11px; color:#000086;">${props.bu || ''}</div>
    </div>`
   )
   .addTo(map);
@@ -485,6 +486,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
