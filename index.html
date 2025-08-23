@@ -37,7 +37,12 @@
   label { font-weight: bold; margin-bottom: 6px; font-size: 14px; }
   .subhead { font-weight: normal; font-size: 12px; display: block; margin-top: 2px; }
   .mapboxgl-popup { font-family: Arial, sans-serif; font-size: 13px; }
-  .mapboxgl-popup-content { white-space: pre-line; }
+  .mapboxgl-popup-content {
+  white-space: pre-line;
+  min-width: max-content;   /* ✅ fit longest line */
+  max-width: 400px;         /* ✅ cap so it doesn’t blow out on huge screens */
+}
+
 
   /* Form elements */
   select { margin: 5px 0; width: 100%; font-size: 13px; }
@@ -479,6 +484,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
