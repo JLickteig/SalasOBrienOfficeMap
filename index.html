@@ -136,7 +136,8 @@
       zoom: 3,
 	  preserveDrawingBuffer: true   // 👈 enables capture of WebGL canvas
     });
-
+map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+	  
     let originalGeojson = null;
     let uploadedLayerId = "uploaded-layer";
     let currentMarkerColor = "#000086"; // default color
@@ -486,6 +487,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
