@@ -35,57 +35,61 @@
     top: 1vh;
     left: 1vw;
     background: #fff;
-    padding: clamp(6px, 1vh, 12px);
-    border-radius: 4px;
+    padding: 12px;
+    border-radius: 6px;
     font-family: Arial, sans-serif;
     z-index: 1;
 
-    /* Responsive panel sizing */
-    width: clamp(180px, 22vw, 360px);
-    height: calc(98vh - 2vh); /* always fit on screen */
-    
+    /* Balanced width */
+    width: clamp(220px, 22vw, 320px);
+
+    /* Never overflow */
+    max-height: 96vh;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
-    gap: clamp(6px, 1vh, 12px);
+    gap: 8px;
+
+    box-sizing: border-box;
   }
 
-  /* Typography scales */
+  /* Labels and text */
   #filters label {
     font-weight: bold;
-    font-size: clamp(11px, 1.5vh, 16px);
+    font-size: clamp(13px, 1.1vw, 15px);
   }
 
   #filters .subhead {
     font-weight: normal;
-    font-size: clamp(9px, 1.2vh, 14px);
+    font-size: clamp(11px, 1vw, 13px);
     display: block;
+    line-height: 1.3;
   }
 
-  /* Controls scale to fit height */
+  /* Form controls */
   #filters select,
   #filters button,
   #filters input[type="file"] {
     width: 100%;
-    font-size: clamp(11px, 1.2vh, 14px);
-    padding: clamp(3px, 0.8vh, 8px);
+    font-size: clamp(12px, 1vw, 14px);
+    padding: 6px;
     font-family: Arial, sans-serif;
   }
 
-  /* Let selects shrink dynamically with screen height */
-  #regionFilter { flex: 1; min-height: 12%; }
-  #buFilter { flex: 1; min-height: 10%; }
+  /* Give selects some breathing room but not oversized */
+  #regionFilter { flex: 1; min-height: 100px; }
+  #buFilter { flex: 1; min-height: 70px; }
 
   /* Color picker row */
   .color-picker-row {
     display: flex;
     align-items: flex-start;
-    gap: clamp(6px, 1vh, 12px);
+    gap: 8px;
   }
 
   #color-picker {
-    height: clamp(18px, 2vh, 28px);
-    width: clamp(18px, 2vh, 28px);
+    height: 24px;
+    width: 24px;
     flex-shrink: 0;
   }
 
@@ -93,13 +97,13 @@
     display: flex;
     flex-direction: column;
     line-height: 1.2;
-    font-size: clamp(10px, 1.3vh, 14px);
+    font-size: clamp(12px, 1vw, 14px);
   }
 
   /* Popups */
   .mapboxgl-popup { 
     font-family: Arial, sans-serif; 
-    font-size: clamp(11px, 1.3vh, 13px); 
+    font-size: 13px; 
   }
   .mapboxgl-popup-content { white-space: pre-line; }
 </style>
@@ -493,6 +497,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
