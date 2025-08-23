@@ -468,26 +468,53 @@ document.getElementById('revertMap').addEventListener('click', () => {
 });
 
 
-  // ✅ Export map at fixed 1920x1080, excluding filters/controls
+// ✅ Export map as 4:3 high-quality PNG (2048x1536), no stretching
 document.getElementById('exportMap').addEventListener('click', () => {
   const mapCanvas = map.getCanvas();
+  const aspectTargetW = 2048;
+  const aspectTargetH = 1536;
+  const aspectTarget = aspectTargetW / aspectTargetH;
 
-  // Create an offscreen canvas at fixed size
+  // Current map aspect
+  const aspectCurrent = mapCanvas.width / mapCanvas.height;
+
+  // Create export canvas
   const exportCanvas = document.createElement('canvas');
-  exportCanvas.width = 1920;
-  exportCanvas.height = 1080;
+  exportCanvas.width = aspectTargetW;
+  exportCanvas.height = aspectTargetH;
   const ctx = exportCanvas.getContext('2d');
 
-  // Scale the map's current canvas into the fixed export size
-  ctx.drawImage(mapCanvas, 0, 0, exportCanvas.width, exportCanvas.height);
+  let drawWidth, drawHeight, offsetX, offsetY;
 
-  // Convert to PNG and download
+  if (aspectCurrent > aspectTarget) {
+    // Map is wider than 4:3 → fit height
+    drawHeight = aspectTargetH;
+    drawWidth = mapCanvas.width * (aspectTargetH / mapCanvas.height);
+    offsetX = (aspectTargetW - drawWidth) / 2;
+    offsetY = 0;
+  } else {
+    // Map is taller than 4:3 → fit width
+    drawWidth = aspectTargetW;
+    drawHeight = mapCanvas.height * (aspectTargetW / mapCanvas.width);
+    offsetX = 0;
+    offsetY = (aspectTargetH - drawHeight) / 2;
+  }
+
+  // Fill background (choose color)
+  ctx.fillStyle = "#ffffff"; // white background (change to "#000000" for black)
+  ctx.fillRect(0, 0, aspectTargetW, aspectTargetH);
+
+  // Draw map onto export canvas
+  ctx.drawImage(mapCanvas, offsetX, offsetY, drawWidth, drawHeight);
+
+  // Save image
   const img = exportCanvas.toDataURL("image/png");
   const link = document.createElement('a');
   link.href = img;
-  link.download = "map-export.png";
+  link.download = "map-export-4x3.png";
   link.click();
 });
+
 
 
 
@@ -518,6 +545,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
