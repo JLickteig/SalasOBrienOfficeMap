@@ -140,6 +140,22 @@
 // ✅ Add zoom controls bottom-right
 map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
 
+	  // ✅ Customize zoom step
+map.on('load', () => {
+  const buttons = document.querySelectorAll('.mapboxgl-ctrl-zoom-in, .mapboxgl-ctrl-zoom-out');
+  buttons.forEach(btn => {
+    btn.onclick = (e) => {
+      e.preventDefault();
+      const step = 0.5; // adjust zoom increment here
+      if (btn.classList.contains('mapboxgl-ctrl-zoom-in')) {
+        map.zoomTo(map.getZoom() + step, { duration: 300 });
+      } else {
+        map.zoomTo(map.getZoom() - step, { duration: 300 });
+      }
+    };
+  });
+});
+
 	  
     let originalGeojson = null;
     let uploadedLayerId = "uploaded-layer";
@@ -490,6 +506,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
