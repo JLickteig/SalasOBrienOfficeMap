@@ -140,37 +140,6 @@
 // ✅ Add zoom controls bottom-right
 map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
 
-// ✅ Add fullscreen control bottom-right
-map.addControl(new mapboxgl.FullscreenControl(), 'bottom-right');
-
-// ✅ Add custom reset view button bottom-right
-class ResetControl {
-  onAdd(map) {
-    this.map = map;
-    this.container = document.createElement('button');
-    this.container.className = 'mapboxgl-ctrl-icon';
-    this.container.type = 'button';
-    this.container.title = 'Reset view';
-    this.container.innerHTML = '⟳'; // simple reset icon
-    this.container.style.fontSize = '18px';
-    this.container.style.lineHeight = '20px';
-    this.container.style.cursor = 'pointer';
-
-    this.container.onclick = () => {
-      map.flyTo({
-        center: [-98.5795, 39.8283], // your default center
-        zoom: 3                       // your default zoom
-      });
-    };
-    return this.container;
-  }
-  onRemove() {
-    this.container.parentNode.removeChild(this.container);
-    this.map = undefined;
-  }
-}
-map.addControl(new ResetControl(), 'bottom-right');
-
 	  
     let originalGeojson = null;
     let uploadedLayerId = "uploaded-layer";
@@ -521,6 +490,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
