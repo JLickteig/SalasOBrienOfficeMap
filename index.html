@@ -299,9 +299,13 @@ map.on('mouseenter', 'offices-layer', (e) => {
 popup
   .setLngLat(e.features[0].geometry.coordinates)
   .setHTML(
-    `<span style="font-weight:bold; color:#009DE0;">${props.officeName || ''}</span><br>${props.address || ''}<br>${props.phone || ''}`
+    `<span style="font-weight:bold; color:#009DE0;">${props.officeName || ''}</span><br>
+     ${props.address || ''}<br>
+     ${props.phone || ''}<br>
+     <span style="font-size:12px; color:#333;">${props.bu || ''}</span>`
   )
   .addTo(map);
+
 
 
 });
@@ -475,6 +479,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
