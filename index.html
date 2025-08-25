@@ -191,6 +191,13 @@
 </div>
 <br>
 
+	  <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+  <input type="checkbox" id="haloToggle">
+  <label for="haloToggle" style="margin:0; font-weight:normal;">Show driving distances</label>
+</div>
+
+	  <br>
+
 
 
     <hr><br>
@@ -240,6 +247,19 @@ map.on('load', () => {
     let uploadedLayerId = "uploaded-layer";
     let currentMarkerColor = "#000086"; // default color
 
+	  const HALO_MULTIPLIER = 5;
+const BASE_RADIUS = 6;
+const OFFICES_LAYER_ID = 'offices-layer';
+const OFFICES_HALO_ID  = 'offices-halo';
+const UPLOADED_HALO_ID = 'uploaded-halo';
+
+function addOfficesHalo() { ... }
+function removeOfficesHalo() { ... }
+function addUploadedHalo() { ... }
+function removeUploadedHalo() { ... }
+function syncUploadedHaloColor() { ... }
+
+
 // Init Pickr
 const pickr = Pickr.create({
   el: '#color-picker',
@@ -260,6 +280,7 @@ const pickr = Pickr.create({
 pickr.on('change', (color) => {
   currentMarkerColor = color.toHEXA().toString();
   pickr.applyColor(true);
+syncUploadedHaloColor(); // ✅ keep halo in sync
 
   if (map.getLayer(uploadedLayerId)) {
     // Update marker dot colors
@@ -508,6 +529,8 @@ console.log("Uploaded feature:", features[features.length - 1].properties);
         source: uploadedLayerId,
         paint: { "circle-radius": 6, "circle-color": currentMarkerColor }
       });
+		
+if (haloToggle.checked) addUploadedHalo();
 
      map.on('mouseenter', uploadedLayerId, (e) => {
   map.getCanvas().style.cursor = 'pointer';
@@ -535,6 +558,8 @@ document.getElementById('revertMap').addEventListener('click', () => {
     map.removeLayer(uploadedLayerId);
     map.removeSource(uploadedLayerId);
   }
+	removeUploadedHalo();
+
   regionSelect.selectedIndex = -1;
   buSelect.selectedIndex = -1;
   pickr.setColor("#000086");
@@ -695,6 +720,19 @@ confirmBtn.onclick = () => {
       }
     });
 
+	  // 🔹 Halo toggle wiring
+const haloToggle = document.getElementById('haloToggle');
+haloToggle.addEventListener('change', () => {
+  if (haloToggle.checked) {
+    addOfficesHalo();
+    if (map.getSource(uploadedLayerId)) addUploadedHalo();
+  } else {
+    removeOfficesHalo();
+    removeUploadedHalo();
+  }
+});
+
+
     // Force Template CSV download
     document.getElementById('downloadTemplate').addEventListener('click', async (e) => {
       e.preventDefault(); // prevent navigation
@@ -715,6 +753,7 @@ confirmBtn.onclick = () => {
   </script>
 </body>
 </html>
+
 
 
 
