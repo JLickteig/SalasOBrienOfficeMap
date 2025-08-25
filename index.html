@@ -88,28 +88,30 @@ button:hover {
 /* Color picker row */
 .color-picker-row {
   display: flex;
-  align-items: flex-start; /* align with the top of the label */
+  align-items: flex-start; /* align with top of label */
   gap: 10px;
 }
 
-/* Force Pickr trigger button to be a perfect square */
+/* Force the Pickr swatch button square */
 #color-picker .pcr-button {
   width: 28px !important;
   height: 28px !important;
   aspect-ratio: 1 / 1 !important;
+  flex-shrink: 0;
   border-radius: 4px !important;
   padding: 0 !important;
   margin: 0 !important;
-  box-sizing: border-box;
-  flex-shrink: 0;
-  align-self: flex-start; /* ✅ ensures it aligns with label top */
+  display: inline-block !important;
 }
 
+/* Keep label stacked nicely */
 .color-picker-row label {
   display: flex;
   flex-direction: column;
+  justify-content: flex-start; /* aligns to the top */
   line-height: 1.2;
 }
+
 
 /* Style the default "Choose File" button */
 input[type="file"]::file-selector-button {
@@ -146,7 +148,7 @@ input[type="file"]::file-selector-button:hover {
     <label>Filter by Business Unit</label><br>
     <select id="buFilter" multiple size="5"></select><br> <button id="clearBU">Clear Business Unit</button>
 
-    <button id="clearFilters">Clear All Filters</button><br><br>
+    <button id="clearFilters">Clear All Filters</button><br>
     <hr><br>
 
     <label>Additional Addresses</label>
@@ -691,6 +693,7 @@ confirmBtn.onclick = () => {
   </script>
 </body>
 </html>
+
 
 
 
