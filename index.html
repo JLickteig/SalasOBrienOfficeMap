@@ -111,7 +111,7 @@
     /* Right-triangle caret (#009de0), 90° at bottom-right; rotates 45° on expand */
     .chev {
       width: 12px; height: 12px; background: var(--brand);
-      clip-path: polygon(100% 100%, 100% 0, 0 100%); /* right angle at bottom-right */
+      clip-path: polygon(100% 100%, 100% 0, 0 100%);
       transition: transform .15s; transform-origin: 50% 50%;
     }
     .accordion-header[aria-expanded="true"] .chev { transform: rotate(45deg); }
@@ -130,7 +130,7 @@
       font-size: 13px;
     }
     input[type="file"]::file-selector-button {
-      font-size: 12px;            /* smaller text */
+      font-size: 12px;
       font-weight: 600;
       color: #000;
       background: #fff;
@@ -150,24 +150,21 @@
       padding: 10px;
       margin-bottom: 10px;
       background: #fff;
-      overflow: hidden; /* prevent bleed */
+      overflow: hidden;
     }
-    .layer-card * { max-width: 100%; } /* keep children inside */
+    .layer-card * { max-width: 100%; }
     .layer-header {
       display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px;
     }
     .layer-meta { display: flex; align-items: center; gap: 8px; min-width: 0; }
-    .chip { width: 18px; height: 18px; border-radius: 4px; border: 1px solid #999; display: inline-block; flex: 0 0 18px; }
     .layer-name-input {
-      border:1px solid #e5e7eb; border-radius:8px; padding:6px 8px; width: 150px; min-width: 0;
+      border:1px solid #e5e7eb; border-radius:8px; padding:6px 8px; width: 180px; min-width: 0;
     }
     .layer-actions { display: flex; align-items: center; gap: 8px; }
     .icon-btn { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; cursor: pointer; }
     .icon-btn:hover { background: #f3f4f6; }
     .layer-body { display: grid; gap: 8px; }
     .layer-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-
-    /* Pickr sizing + containment */
     .pickr { flex: 0 0 auto; }
     .pickr .pcr-button { width: 24px; height: 24px; border-radius: 6px; }
 
@@ -183,11 +180,21 @@
       box-shadow: var(--shadow);
       padding: 10px 12px;
       z-index: 4;
-      min-width: 180px;
+      max-width: min(90%, 900px);
     }
-    .map-legend h4 { margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #111; }
-    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #222; margin: 4px 0; }
-    .legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid #999; display: inline-block; flex: 0 0 14px; }
+    .map-legend h4 {
+      margin: 0 0 6px 0; font-size: 13px; font-weight: 700; color: #111; text-align:center;
+    }
+    /* HORIZONTAL legend layout */
+    #legendItems {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+    }
+    .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+    .legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid #999; display: inline-block; }
   </style>
 </head>
 <body>
@@ -246,7 +253,6 @@
       <div class="layer-card" aria-label="Offices layer">
         <div class="layer-header">
           <div class="layer-meta">
-            <span class="chip" style="background:#009de0;"></span>
             <strong>Offices</strong>
           </div>
           <div class="muted">Built-in</div>
@@ -268,6 +274,7 @@
     <div class="panel-section">
       <div class="section-title">Tools</div>
       <button class="so-btn" id="exportMap" type="button">Export Map as PNG</button>
+      <button class="so-btn" id="revertMap" type="button" style="margin-top:8px;">Revert to Base Map</button>
       <div id="uploadStatus" class="muted" style="margin-top:6px;"></div>
     </div>
   </aside>
@@ -309,11 +316,12 @@
     const OFFICE_SOURCE = 'offices';
     const OFFICE_LAYER = 'offices-layer';
     const HALO_OFFICES_SOURCE = 'halo-offices'; // offices-only halos
+    const HALO_OFFICES_FILL = 'halo-offices-fill';
 
     // Upload layers state
     const MAX_LAYERS = 3;
     let layerCount = 0;
-    const uploadLayers = []; // { id, nameInputId, sourceId, circleLayerId, pickr, visible, statusId }
+    const uploadLayers = []; // { id, nameInputId, sourceId, circleLayerId, pickr, get visible(){} }
 
     // Accordion behavior
     document.querySelectorAll('.accordion-header').forEach(h => {
@@ -394,7 +402,7 @@
           return await fetchIsochronePolygon(lng, lat);
         });
         const results = await Promise.all(batch);
-        polys.push(...results);
+      polys.push(...results);
       }
       return { type: 'FeatureCollection', features: polys };
     }
@@ -426,7 +434,7 @@
         });
 
         // halo layer (OFFICES ONLY; no borders)
-        ensureFillLayer(HALO_OFFICES_SOURCE, 'halo-offices-fill', '#009de0', OFFICE_LAYER);
+        ensureFillLayer(HALO_OFFICES_SOURCE, HALO_OFFICES_FILL, '#009de0', OFFICE_LAYER);
 
         // build filters & popups
         buildFilters(originalGeojson);
@@ -435,7 +443,7 @@
         // reach initial state
         setReach(false);
 
-        // initial legend (hidden until user adds a layer)
+        // legend init (hidden until user adds a layer)
         updateLegend();
 
       } catch (e) {
@@ -552,7 +560,7 @@
       // Always include Offices once legend is shown
       addLegendItem(itemsEl, '#009de0', 'Offices');
 
-      // Include all visible user layers (even pre-upload so users see their color/name)
+      // Include all visible user layers
       for (const l of uploadLayers) {
         if (!l.visible) continue;
         const color = l.pickr.getColor().toHEXA().toString();
@@ -578,7 +586,7 @@
       updateLegend();
     });
 
-    function randomBrandishColor(seed) {
+    function paletteColor(seed) {
       const palette = ['#000086', '#16a34a', '#ea580c', '#2563eb', '#0ea5e9', '#f59e0b']; // first = #000086
       return palette[(seed - 1) % palette.length];
     }
@@ -587,17 +595,16 @@
       const index = ++layerCount;
       const layerId = `uploaded-layer-${index}`;
       const circleLayerId = `uploaded-circle-${index}`;
-      const defaultColor = randomBrandishColor(index);
+      const defaultColor = paletteColor(index);
       const statusId = `status-${layerId}`;
 
-      // UI Card
+      // UI Card (no preview chip in header)
       const card = document.createElement('div');
       card.className = 'layer-card';
       card.id = `card-${layerId}`;
       card.innerHTML = `
         <div class="layer-header">
           <div class="layer-meta">
-            <span class="chip" id="chip-${layerId}" style="background:${defaultColor};"></span>
             <input type="text" id="name-${layerId}" value="Layer ${index}" aria-label="Layer name" class="layer-name-input">
           </div>
           <div class="layer-actions">
@@ -627,7 +634,7 @@
         paint: { 'circle-radius': 6, 'circle-color': defaultColor }
       });
 
-      // Color picker
+      // Color picker (button itself is the dynamic color swatch)
       const pickr = Pickr.create({
         el: `#picker-${layerId}`,
         theme: 'classic',
@@ -637,16 +644,15 @@
 
       // Ensure initial UI shows defaultColor and stays in sync
       pickr.on('init', () => {
-        pickr.setColor(defaultColor, true); // update internal + UI state
+        pickr.setColor(defaultColor, true);
         pickr.applyColor(true);
         const btn = document.querySelector(`#picker-${layerId} .pcr-button`);
         if (btn) btn.style.background = defaultColor;
       });
 
-      // Keep chip + picker button + map layer color in sync
+      // Keep picker button + map layer color in sync
       pickr.on('change', (color) => {
         const hex = color.toHEXA().toString();
-        document.getElementById(`chip-${layerId}`).style.background = hex;
         const pickerButton = document.querySelector(`#picker-${layerId} .pcr-button`);
         if (pickerButton) pickerButton.style.background = hex;
         map.setPaintProperty(circleLayerId, 'circle-color', hex);
@@ -665,7 +671,6 @@
       document.getElementById(`toggle-${layerId}`).addEventListener('click', () => {
         visible = !visible;
         map.setLayoutProperty(circleLayerId, 'visibility', visible ? 'visible' : 'none');
-        document.getElementById(`chip-${layerId}`).style.opacity = visible ? '1' : '0.35';
         updateLegend();
       });
 
@@ -699,7 +704,6 @@
         circleLayerId,
         nameInputId: `name-${layerId}`,
         pickr,
-        statusId,
         get visible() { return visible; }
       });
 
@@ -853,7 +857,7 @@
         if (legendEl && legendEl.style.display !== 'none') {
           const legendCanvas = await html2canvas(legendEl, { backgroundColor: null, scale: 2 });
           const pad = 24;
-          const maxWidth = Math.min(legendCanvas.width, Math.floor(exportCanvas.width * 0.5)); // up to 50%
+          const maxWidth = Math.min(legendCanvas.width, Math.floor(exportCanvas.width * 0.7)); // up to 70%
           const scale = maxWidth / legendCanvas.width;
           const dw = legendCanvas.width * scale;
           const dh = legendCanvas.height * scale;
@@ -872,10 +876,48 @@
 
       function cleanup() {
         document.body.removeChild(overlay);
+        const panel = document.getElementById('panel');
+        const controls = document.querySelectorAll('.mapboxgl-ctrl');
         panel.style.display = '';
         controls.forEach(c => c.style.display = '');
         map.resize();
       }
+    });
+
+    // ===== Revert to Base Map =====
+    document.getElementById('revertMap').addEventListener('click', () => {
+      // Remove all user layers
+      for (const l of [...uploadLayers]) {
+        if (map.getLayer(l.circleLayerId)) map.removeLayer(l.circleLayerId);
+        if (map.getSource(l.id)) map.removeSource(l.id);
+        const card = document.getElementById(`card-${l.id}`);
+        if (card) card.remove();
+      }
+      uploadLayers.length = 0;
+      layerCount = 0;
+      document.getElementById('uploadStatus').textContent = '';
+      document.getElementById('addLayerBtn').disabled = false;
+
+      // Reset filters
+      const regionSelect = document.getElementById('regionFilter');
+      const buSelect = document.getElementById('buFilter');
+      regionSelect.selectedIndex = -1;
+      buSelect.selectedIndex = -1;
+
+      // Reset offices data
+      if (originalGeojson) {
+        map.getSource(OFFICE_SOURCE).setData(originalGeojson);
+      }
+
+      // Reset halos if shown
+      if (reachEnabled) {
+        rebuildOfficeHalos(originalGeojson);
+      } else {
+        setHaloData(HALO_OFFICES_SOURCE, emptyFC());
+      }
+
+      // Hide legend (no user layers)
+      updateLegend();
     });
 
     // ===== Template CSV download (under +Add Layer) =====
