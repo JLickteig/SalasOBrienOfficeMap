@@ -48,14 +48,16 @@
   select { margin: 5px 0; width: 100%; font-size: 13px; }
 /* Global button style */
 button {
-  margin: 5px 0;
-  padding: 10px 24px;
-  font-size: 16px;
+  display: block;
+  width: 100%;          /* ✅ same width as filter selects */
+  margin: 6px 0;
+  padding: 10px;
+  font-size: 14px;
   font-weight: bold;
   color: #009de0;
   background: #fff;
   border: 2px solid #009de0;
-  border-radius: 50px;   /* pill look */
+  border-radius: 50px;
   cursor: pointer;
   transition: background 0.2s, color 0.2s;
 }
@@ -515,20 +517,20 @@ document.getElementById('exportMap').addEventListener('click', () => {
   const horiz = document.createElement('div');
   horiz.style.position = "absolute";
   horiz.style.top = "50%";
-  horiz.style.left = "0";
-  horiz.style.width = "100%";
-  horiz.style.height = "1px";
-  horiz.style.background = "#666";
+  horiz.style.left = "25";
+  horiz.style.width = "15%";
+  horiz.style.height = "0.5px";
+  horiz.style.background = "#333";
   horiz.style.transform = "translateY(-50%)";
   box.appendChild(horiz);
 
   const vert = document.createElement('div');
   vert.style.position = "absolute";
-  vert.style.top = "0";
+  vert.style.top = "25%";
   vert.style.left = "50%";
-  vert.style.width = "1px";
-  vert.style.height = "100%";
-  vert.style.background = "#666";
+  vert.style.width = "0.5px";
+  vert.style.height = "15%";
+  vert.style.background = "#333";
   vert.style.transform = "translateX(-50%)";
   box.appendChild(vert);
 
@@ -650,6 +652,7 @@ document.body.appendChild(overlay);
   </script>
 </body>
 </html>
+
 
 
 
