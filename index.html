@@ -86,26 +86,26 @@ button:hover {
   }
   
 
-  /* Color picker row */
-  .color-picker-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-  }
-#color-picker {
-  width: 28px;          /* starting size */
-  aspect-ratio: 1 / 1;  /* ✅ always square */
-  flex-shrink: 0;       /* don’t let flexbox squeeze it */
+/* Force Pickr preview button square */
+#color-picker .pcr-button {
+  width: 100% !important;
+  height: 100% !important;
+  aspect-ratio: 1 / 1 !important;
+  border-radius: 4px;  /* optional */
   box-sizing: border-box;
 }
 
+/* Row alignment for color square + label */
+.color-picker-row {
+  display: flex;
+  align-items: center;   /* ✅ centers vertically */
+  gap: 10px;
+}
 
-  .color-picker-row label {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.2;
-  }
-
+.color-picker-row label {
+  line-height: 1.4;
+  font-size: 13px;
+}
 
 /* Style the default "Choose File" button */
 input[type="file"]::file-selector-button {
@@ -687,6 +687,7 @@ confirmBtn.onclick = () => {
   </script>
 </body>
 </html>
+
 
 
 
