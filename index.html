@@ -149,9 +149,7 @@
     const HALO_OFFICES_SOURCE   = 'halo-offices';
     const HALO_UPLOADED_SOURCE  = 'halo-uploaded';
     const HALO_OFFICES_FILL     = 'halo-offices-fill';
-    const HALO_OFFICES_OUTLINE  = 'halo-offices-outline';
     const HALO_UPLOADED_FILL    = 'halo-uploaded-fill';
-    const HALO_UPLOADED_OUTLINE = 'halo-uploaded-outline';
 
     // Map
     const map = new mapboxgl.Map({
@@ -285,15 +283,7 @@
           paint: { 'fill-color': colorFill, 'fill-opacity': 0.15 }
         }, beforeLayerId);
       }
-      if (!map.getLayer(outlineId)) {
-        map.addLayer({
-          id: outlineId,
-          type: 'line',
-          source: sourceId,
-          paint: { 'line-color': colorOutline, 'line-width': 1 }
-        }, beforeLayerId);
       }
-    }
 
     function setHaloData(sourceId, fc) {
       const src = map.getSource(sourceId);
@@ -319,8 +309,8 @@
         });
 
         // Prepare empty halo sources and layers under the points
-        ensureHaloLayers(HALO_OFFICES_SOURCE, HALO_OFFICES_FILL, HALO_OFFICES_OUTLINE, '#009de0', '#009de0', 'offices-layer');
-        ensureHaloLayers(HALO_UPLOADED_SOURCE, HALO_UPLOADED_FILL, HALO_UPLOADED_OUTLINE, currentMarkerColor, currentMarkerColor, 'offices-layer');
+        ensureHaloLayers(HALO_OFFICES_SOURCE, HALO_OFFICES_FILL, '#009de0', '#009de0', 'offices-layer');
+        ensureHaloLayers(HALO_UPLOADED_SOURCE, HALO_UPLOADED_FILL, currentMarkerColor, currentMarkerColor, 'offices-layer');
 
         // Filters
         const regionSelect = document.getElementById('regionFilter');
@@ -726,3 +716,4 @@
   </script>
 </body>
 </html>
+
