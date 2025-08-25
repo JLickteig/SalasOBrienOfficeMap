@@ -468,7 +468,7 @@ document.getElementById('revertMap').addEventListener('click', () => {
 });
 
 
-// ✅ Preview export mode: lets user adjust map before saving
+// ✅ Export with preview (4:3 crop + center crosshair, map still interactive)
 document.getElementById('exportMap').addEventListener('click', () => {
   const filters = document.getElementById('filters');
   const controls = document.querySelectorAll('.mapboxgl-ctrl');
@@ -478,32 +478,76 @@ document.getElementById('exportMap').addEventListener('click', () => {
   controls.forEach(ctrl => ctrl.style.display = 'none');
   map.resize();
 
-  // Create overlay with buttons
+  // === Overlay for guides ===
   const overlay = document.createElement('div');
   overlay.style.position = "fixed";
   overlay.style.top = "0";
   overlay.style.left = "0";
   overlay.style.width = "100%";
   overlay.style.height = "100%";
-  overlay.style.background = "rgba(0,0,0,0.6)";
-  overlay.style.display = "flex";
-  overlay.style.flexDirection = "column";
-  overlay.style.justifyContent = "flex-end";
-  overlay.style.alignItems = "center";
   overlay.style.zIndex = "9999";
+  overlay.style.pointerEvents = "none"; // let the map remain interactive
 
-  const buttonRow = document.createElement('div');
-  buttonRow.style.margin = "20px";
-  
+  // Darken outside area
+  overlay.style.background = "rgba(0,0,0,0.25)";
+
+  // Centered 4:3 box
+  const box = document.createElement('div');
+  box.style.position = "absolute";
+  box.style.top = "50%";
+  box.style.left = "50%";
+  box.style.width = "80%";        // relative width
+  box.style.aspectRatio = "4/3"; // enforces 4:3 shape
+  box.style.transform = "translate(-50%, -50%)";
+  box.style.border = "2px dashed white";
+  box.style.pointerEvents = "none";
+  overlay.appendChild(box);
+
+  // Crosshair in center
+  const crosshair = document.createElement('div');
+  crosshair.style.position = "absolute";
+  crosshair.style.top = "50%";
+  crosshair.style.left = "50%";
+  crosshair.style.width = "20px";
+  crosshair.style.height = "20px";
+  crosshair.style.marginLeft = "-10px";
+  crosshair.style.marginTop = "-10px";
+  crosshair.style.borderLeft = "2px solid rgba(255,255,255,0.7)";
+  crosshair.style.borderTop = "2px solid rgba(255,255,255,0.7)";
+  crosshair.style.borderRight = "2px solid rgba(255,255,255,0.7)";
+  crosshair.style.borderBottom = "2px solid rgba(255,255,255,0.7)";
+  overlay.appendChild(crosshair);
+
+  // Buttons
+  const buttons = document.createElement('div');
+  buttons.style.position = "absolute";
+  buttons.style.bottom = "20px";
+  buttons.style.left = "50%";
+  buttons.style.transform = "translateX(-50%)";
+  buttons.style.zIndex = "10000";
+  buttons.style.pointerEvents = "auto"; // these should be clickable
+
   const confirmBtn = document.createElement('button');
   confirmBtn.textContent = "✅ Confirm Export";
   confirmBtn.style.marginRight = "10px";
   confirmBtn.style.padding = "10px 20px";
   confirmBtn.style.fontSize = "16px";
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = "❌ Cancel";
+  cancelBtn.style.padding = "10px 20px";
+  cancelBtn.style.fontSize = "16px";
+
+  buttons.appendChild(confirmBtn);
+  buttons.appendChild(cancelBtn);
+  overlay.appendChild(buttons);
+
+  document.body.appendChild(overlay);
+
+  // === Confirm export ===
   confirmBtn.onclick = () => {
-    // When confirmed, export map at 4:3 (2048x1536)
     const exportCanvas = document.createElement('canvas');
-    exportCanvas.width = 2048;
+    exportCanvas.width = 2048;   // 4:3 high-res
     exportCanvas.height = 1536;
     const ctx = exportCanvas.getContext('2d');
 
@@ -534,29 +578,18 @@ document.getElementById('exportMap').addEventListener('click', () => {
     link.download = "map-export-4x3.png";
     link.click();
 
-    // Restore UI
+    cleanup();
+  };
+
+  // === Cancel export ===
+  cancelBtn.onclick = () => cleanup();
+
+  function cleanup() {
     document.body.removeChild(overlay);
     filters.style.display = '';
     controls.forEach(ctrl => ctrl.style.display = '');
     map.resize();
-  };
-
-  const cancelBtn = document.createElement('button');
-  cancelBtn.textContent = "❌ Cancel";
-  cancelBtn.style.padding = "10px 20px";
-  cancelBtn.style.fontSize = "16px";
-  cancelBtn.onclick = () => {
-    // Just restore UI
-    document.body.removeChild(overlay);
-    filters.style.display = '';
-    controls.forEach(ctrl => ctrl.style.display = '');
-    map.resize();
-  };
-
-  buttonRow.appendChild(confirmBtn);
-  buttonRow.appendChild(cancelBtn);
-  overlay.appendChild(buttonRow);
-  document.body.appendChild(overlay);
+  }
 });
 
 
@@ -586,6 +619,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
