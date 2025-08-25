@@ -62,7 +62,7 @@
 button {
   display: block;
   width: 100%;          /* ✅ same width as filter selects */
-  margin: 0px 0;
+  margin: 2px 0;
   padding: 10px;
   font-size: 14px;
   font-weight: bold;
@@ -102,33 +102,40 @@ button:hover {
     flex-direction: column;
     line-height: 1.2;
   }
-
-	/* File upload styled like buttons */
-.upload-btn {
-  display: block;
+/* Style the file upload to match other buttons */
+input[type="file"] {
+  font-size: 9px;
+  font-weight: bold;
   width: 100%;
-  margin: 0px 0;
-  padding: 10px;
-  font-size: 14px;
+  padding: 8px;
+  border: 2px solid #009de0;
+  border-radius: 50px;
+  background: #fff;
+  color: #000;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+/* Style the default "Choose File" button */
+input[type="file"]::file-selector-button {
+  font-size: 9px;
   font-weight: bold;
   color: #000;
   background: #fff;
   border: 2px solid #009de0;
   border-radius: 50px;
+  padding: 6px 12px;
+  margin-right: 10px;
   cursor: pointer;
-  text-align: center;
   transition: background 0.2s, color 0.2s;
 }
 
-.upload-btn:hover {
+input[type="file"]::file-selector-button:hover {
   background: #009de0;
   color: #fff;
 }
 
-/* Hide the default file input */
-#csvUpload {
-  display: none;
-}
+	
 
 </style>
 
@@ -142,7 +149,7 @@ button:hover {
     <select id="regionFilter" multiple size="10"></select><br><button id="clearRegion">Clear State/Province</button><br><br>
 
     <label>Filter by Business Unit</label><br>
-    <select id="buFilter" multiple size="5"></select><br> <button id="clearBU">Clear Business Unit</button><br>
+    <select id="buFilter" multiple size="5"></select><br> <button id="clearBU">Clear Business Unit</button>
 
     <button id="clearFilters">Clear All Filters</button><br><br>
     <hr><br>
@@ -152,8 +159,7 @@ button:hover {
 	  <a href="#" id="downloadTemplate" style="display:inline-block; margin-top:2px; margin-bottom: 6px; font-size:13px; text-decoration:underline; color:#009de0; cursor:pointer;">
       download template
     </a>
-	<label for="csvUpload" class="upload-btn">Choose File</label>
-    <input type="file" id="csvUpload" accept=".csv"><br>
+	<input type="file" id="csvUpload" accept=".csv"><br>
 	<div id="uploadStatus" style="font-size:12px; color:#666; margin-top:4px;"></div>
   
     <br>
@@ -170,7 +176,7 @@ button:hover {
 
 
     <hr><br>
-    <button id="revertMap">Revert to Base Map</button><br>
+    <button id="revertMap">Revert to Base Map</button>
     <button id="exportMap">Export Map as PNG</button>
   </div>
 
@@ -690,6 +696,7 @@ confirmBtn.onclick = () => {
   </script>
 </body>
 </html>
+
 
 
 
