@@ -63,7 +63,7 @@ button {
   display: block;
   width: 100%;          /* ✅ same width as filter selects */
   margin: 6px 0;
-  padding: 10px;
+  padding: 2px;
   font-size: 14px;
   font-weight: bold;
   color: #000;
@@ -505,6 +505,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
 
   // === Overlay container ===
   const overlay = document.createElement('div');
+  overlay.className = "export-overlay";  
   overlay.style.position = "fixed";
   overlay.style.top = "0";
   overlay.style.left = "0";
@@ -525,26 +526,27 @@ document.getElementById('exportMap').addEventListener('click', () => {
   box.style.pointerEvents = "none";
   overlay.appendChild(box);
 
-  // Crosshairs (span across the box)
-  const horiz = document.createElement('div');
-  horiz.style.position = "absolute";
-  horiz.style.top = "50%";
-  horiz.style.left = "25%";
-  horiz.style.width = "25%";
-  horiz.style.height = "0.5px";
-  horiz.style.background = "#999";
-  horiz.style.transform = "translateY(-50%)";
-  box.appendChild(horiz);
+ // Crosshairs (short, centered inside the box)
+const horiz = document.createElement('div');
+horiz.style.position = "absolute";
+horiz.style.top = "50%";
+horiz.style.left = "10%";
+horiz.style.width = "80%";     // span 80% of box width
+horiz.style.height = "1px";
+horiz.style.background = "#666";
+horiz.style.transform = "translateY(-50%)";
+box.appendChild(horiz);
 
-  const vert = document.createElement('div');
-  vert.style.position = "absolute";
-  vert.style.top = "25%";
-  vert.style.left = "50%";
-  vert.style.width = "0.5px";
-  vert.style.height = "25%";
-  vert.style.background = "#999";
-  vert.style.transform = "translateX(-50%)";
-  box.appendChild(vert);
+const vert = document.createElement('div');
+vert.style.position = "absolute";
+vert.style.left = "50%";
+vert.style.top = "10%";
+vert.style.height = "80%";     // span 80% of box height
+vert.style.width = "1px";
+vert.style.background = "#666";
+vert.style.transform = "translateX(-50%)";
+box.appendChild(vert);
+
 
   // Instruction text
   const instructions = document.createElement('div');
@@ -664,6 +666,7 @@ document.body.appendChild(overlay);
   </script>
 </body>
 </html>
+
 
 
 
