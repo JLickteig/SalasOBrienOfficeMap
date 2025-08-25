@@ -32,7 +32,6 @@
 
     * { box-sizing: border-box; }
     body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: var(--text); }
-
     #map { position: absolute; inset: 0; }
 
     /* Panel */
@@ -49,7 +48,6 @@
       padding: 14px;
       z-index: 5;
     }
-
     .panel-section {
       border: 1px solid var(--line);
       border-radius: 12px;
@@ -57,7 +55,6 @@
       margin-bottom: 12px;
       background: #fff;
     }
-
     .section-title {
       font-weight: 600;
       font-size: 14px;
@@ -66,7 +63,6 @@
       align-items: center;
       gap: 8px;
     }
-
     .hr { height: 1px; background: var(--line); margin: 12px 0; }
 
     /* Segmented Toggle */
@@ -85,10 +81,7 @@
       color: var(--brand);
       cursor: pointer;
     }
-    .segmented button.active {
-      background: var(--brand);
-      color: #fff;
-    }
+    .segmented button.active { background: var(--brand); color: #fff; }
 
     /* Buttons */
     .so-btn {
@@ -109,32 +102,19 @@
     .so-btn:hover { background: var(--brand); color: #fff; }
 
     /* Accordion */
-    .accordion {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      overflow: hidden;
-      margin-bottom: 10px;
-    }
+    .accordion { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
     .accordion-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 12px;
-      cursor: pointer;
-      background: #f8fafc;
-      font-weight: 600;
-      font-size: 14px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px; cursor: pointer; background: #f8fafc;
+      font-weight: 600; font-size: 14px;
     }
-
-    /* Custom right-triangle caret (#009de0), 90° at bottom-right; rotates down when expanded */
+    /* Right-triangle caret (#009de0), 90° at bottom-right; rotates 45° on expand */
     .chev {
-      width: 12px; height: 12px;
-      background: var(--brand);
+      width: 12px; height: 12px; background: var(--brand);
       clip-path: polygon(100% 100%, 100% 0, 0 100%); /* right angle at bottom-right */
-      transition: transform .15s;
-      transform-origin: 50% 50%;
+      transition: transform .15s; transform-origin: 50% 50%;
     }
-    .accordion-header[aria-expanded="true"] .chev { transform: rotate(90deg); }
+    .accordion-header[aria-expanded="true"] .chev { transform: rotate(45deg); }
     .accordion-body { display: none; padding: 10px; }
     .accordion-header[aria-expanded="true"] + .accordion-body { display: block; }
 
@@ -144,80 +124,58 @@
     select { width: 100%; min-height: 160px; font-size: 13px; }
     .muted { color: var(--muted); font-size: 12px; }
 
-    /* Layer rows */
+    /* Layer cards */
     .layer-card {
       border: 1px solid var(--line);
       border-radius: 10px;
       padding: 10px;
       margin-bottom: 10px;
       background: #fff;
+      overflow: hidden; /* prevent bleed */
     }
+    .layer-card * { max-width: 100%; } /* keep children inside */
     .layer-header {
-      display: flex; align-items: center; justify-content: space-between; gap: 8px;
-      margin-bottom: 8px;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px;
     }
-    .layer-meta { display: flex; align-items: center; gap: 8px; }
-    .chip {
-      width: 18px; height: 18px; border-radius: 4px; border: 1px solid #999;
-      display: inline-block;
+    .layer-meta { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .chip { width: 18px; height: 18px; border-radius: 4px; border: 1px solid #999; display: inline-block; flex: 0 0 18px; }
+    .layer-name-input {
+      border:1px solid #e5e7eb; border-radius:8px; padding:6px 8px; width: 150px; min-width: 0;
     }
-    .layer-actions {
-      display: flex; align-items: center; gap: 8px;
-    }
-    .icon-btn {
-      background: #fff; border: 1px solid var(--line);
-      border-radius: 8px; padding: 6px 8px; cursor: pointer;
-    }
+    .layer-actions { display: flex; align-items: center; gap: 8px; }
+    .icon-btn { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; cursor: pointer; }
     .icon-btn:hover { background: #f3f4f6; }
     .layer-body { display: grid; gap: 8px; }
+    .layer-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     input[type="file"] { width: 100%; font-size: 13px; }
 
-    .pickr { margin-right: 8px; }
+    /* Pickr sizing + containment */
+    .pickr { flex: 0 0 auto; }
+    .pickr .pcr-button { width: 24px; height: 24px; border-radius: 6px; }
 
     /* Map legend (printed too) */
     .map-legend {
-      position: absolute;
-      left: 14px;
-      bottom: 14px;
-      background: rgba(255,255,255,0.96);
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      box-shadow: var(--shadow);
-      padding: 10px 12px;
-      z-index: 4;
-      min-width: 180px;
+      position: absolute; left: 14px; bottom: 14px;
+      background: rgba(255,255,255,0.96); border: 1px solid var(--line);
+      border-radius: 10px; box-shadow: var(--shadow);
+      padding: 10px 12px; z-index: 4; min-width: 180px;
     }
-    .map-legend h4 {
-      margin: 0 0 8px 0;
-      font-size: 13px;
-      font-weight: 700;
-      color: #111;
-    }
-    .legend-item {
-      display: flex; align-items: center; gap: 8px;
-      font-size: 12px; color: #222;
-      margin: 4px 0;
-    }
-    .legend-swatch {
-      width: 14px; height: 14px; border-radius: 3px; border: 1px solid #999;
-      display: inline-block;
-      flex: 0 0 14px;
-    }
+    .map-legend h4 { margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #111; }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #222; margin: 4px 0; }
+    .legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid #999; display: inline-block; flex: 0 0 14px; }
   </style>
 </head>
 <body>
   <!-- Control Panel -->
   <aside id="panel" aria-label="Controls">
-    <!-- Reach toggle -->
+    <!-- Coverage -->
     <div class="panel-section">
       <div class="section-title">Coverage (3-hour drive)</div>
       <div class="segmented" role="group" aria-label="Reach toggle">
         <button id="reachOff" class="active" aria-pressed="true">Hide Reach</button>
         <button id="reachOn" aria-pressed="false">Show Reach</button>
       </div>
-      <div class="muted" style="margin-top:6px;">
-        Draws a 3‑hour driving area around <strong>Offices</strong> only (opacity 0.2).
-      </div>
+      <div class="muted" style="margin-top:6px;">Shows a 3-hour driving area around offices (opacity 0.2).</div>
     </div>
 
     <!-- Filters -->
@@ -332,7 +290,7 @@
     // Upload layers state
     const MAX_LAYERS = 3;
     let layerCount = 0;
-    const uploadLayers = []; // array of {id, nameInputId, sourceId, circleLayerId, pickr, visible}
+    const uploadLayers = []; // { id, nameInputId, sourceId, circleLayerId, pickr, visible, statusId }
 
     // Accordion behavior
     document.querySelectorAll('.accordion-header').forEach(h => {
@@ -376,11 +334,10 @@
           id: layerId,
           type: 'fill',
           source: sourceId,
-          paint: { 'fill-color': color, 'fill-opacity': 0.2 } // 0.2 per request
+          paint: { 'fill-color': color, 'fill-opacity': 0.2 } // opacity 0.2
         }, beforeLayerId);
       }
     }
-
     function setHaloData(sourceId, fc) {
       const src = map.getSource(sourceId);
       if (src) src.setData(fc);
@@ -405,7 +362,6 @@
         return circle;
       }
     }
-
     async function buildIsochronesForPoints(points) {
       const polys = [];
       const batchSize = 5;
@@ -419,7 +375,6 @@
       }
       return { type: 'FeatureCollection', features: polys };
     }
-
     function dissolvePolygons(fc) {
       if (!fc?.features?.length) return emptyFC();
       let merged = fc.features[0];
@@ -540,7 +495,7 @@
             <div style="font-size:11px; color:#333; margin:0;">${props.address || ''}</div>
             <div style="font-size:11px; color:#666; margin:0;">${props.phone || ''}</div>
             <div style="font-size:11px; color:#666; margin:0;">${props.bu || ''}</div>
-           </div>`
+          </div>`
         ).addTo(map);
       });
       map.on('mouseleave', OFFICE_LAYER, () => { map.getCanvas().style.cursor = ''; popup.remove(); });
@@ -561,48 +516,33 @@
       const itemsEl = document.getElementById('legendItems');
       itemsEl.innerHTML = '';
 
-      // Offices
+      // Offices (always)
       addLegendItem(itemsEl, '#009de0', 'Offices');
 
-      // Visible upload layers with data
+      // Show ALL added layers (visible ones), even before data is uploaded
       for (const l of uploadLayers) {
-        const src = map.getSource(l.sourceId);
-        const hasData = !!src && src._data?.features?.length;
-        if (!l.visible || !hasData) continue;
+        if (!l.visible) continue;
         const color = l.pickr.getColor().toHEXA().toString();
         const name = document.getElementById(l.nameInputId).value || 'Layer';
         addLegendItem(itemsEl, color, name);
       }
     }
-
     function addLegendItem(container, color, name) {
-      const row = document.createElement('div');
-      row.className = 'legend-item';
-      const sw = document.createElement('span');
-      sw.className = 'legend-swatch';
-      sw.style.background = color;
-      const text = document.createElement('span');
-      text.textContent = name;
-      row.appendChild(sw); row.appendChild(text);
-      container.appendChild(row);
+      const row = document.createElement('div'); row.className = 'legend-item';
+      const sw = document.createElement('span'); sw.className = 'legend-swatch'; sw.style.background = color;
+      const text = document.createElement('span'); text.textContent = name;
+      row.appendChild(sw); row.appendChild(text); container.appendChild(row);
     }
 
     // ===== Layers UI =====
     const uploadLayersContainer = document.getElementById('uploadLayers');
     const addLayerBtn = document.getElementById('addLayerBtn');
 
-    // OPEN FILE DIALOG ON CLICK
+    // Do NOT auto-open the file picker; just add a new set of inputs
     addLayerBtn.addEventListener('click', () => {
-      if (layerCount >= MAX_LAYERS) {
-        alert('You can add up to 3 layers.');
-        return;
-      }
-      const { fileInputId } = addUploadLayer();   // create UI + map layer; get file input id
+      if (layerCount >= MAX_LAYERS) { alert('You can add up to 3 layers.'); return; }
+      addUploadLayer();
       if (layerCount >= MAX_LAYERS) addLayerBtn.disabled = true;
-
-      // Prompt user for CSV immediately (user-initiated click)
-      const input = document.getElementById(fileInputId);
-      if (input) input.click();
     });
 
     function randomBrandishColor(seed) {
@@ -615,6 +555,7 @@
       const layerId = `uploaded-layer-${index}`;
       const circleLayerId = `uploaded-circle-${index}`;
       const defaultColor = randomBrandishColor(index);
+      const statusId = `status-${layerId}`;
 
       // UI Card
       const card = document.createElement('div');
@@ -624,7 +565,7 @@
         <div class="layer-header">
           <div class="layer-meta">
             <span class="chip" id="chip-${layerId}" style="background:${defaultColor};"></span>
-            <input type="text" id="name-${layerId}" value="Layer ${index}" aria-label="Layer name" style="border:1px solid #e5e7eb; border-radius:8px; padding:6px 8px; width:150px;">
+            <input type="text" id="name-${layerId}" value="Layer ${index}" aria-label="Layer name" class="layer-name-input">
           </div>
           <div class="layer-actions">
             <button class="icon-btn" id="toggle-${layerId}" title="Toggle visibility">👁</button>
@@ -632,11 +573,14 @@
           </div>
         </div>
         <div class="layer-body">
-          <div style="display:flex; align-items:center; gap:10px;">
+          <div class="layer-row">
             <div id="picker-${layerId}"></div>
             <label class="muted">Marker Color</label>
           </div>
-          <input type="file" id="file-${layerId}" accept=".csv">
+          <div class="layer-row">
+            <input type="file" id="file-${layerId}" accept=".csv">
+          </div>
+          <div id="${statusId}" class="muted"></div>
         </div>
       `;
       uploadLayersContainer.appendChild(card);
@@ -655,18 +599,16 @@
         el: `#picker-${layerId}`,
         theme: 'classic',
         default: defaultColor,
-        components: {
-          preview: true,
-          opacity: false,
-          hue: true,
-          interaction: { hex: true, input: true }
-        }
+        components: { preview: true, opacity: false, hue: true, interaction: { hex: true, input: true } }
       });
+      // Keep chip + map layer color in sync
       pickr.on('change', (color) => {
         const hex = color.toHEXA().toString();
-        document.getElementById(`chip-${layerId}`).style.background = hex;
-        map.setPaintProperty(circleLayerId, 'circle-color', hex);
-        // Rewrite color on features for popups
+        document.getElementById(`chip-${layerId}`).style.background = hex;         // chip updates
+        const pickerButton = document.querySelector(`#picker-${layerId} .pcr-button`);
+        if (pickerButton) pickerButton.style.background = hex;                     // ensure selector box visually updates
+        map.setPaintProperty(circleLayerId, 'circle-color', hex);                  // map updates
+        // rewrite feature colors for popups
         const src = map.getSource(layerId);
         if (src) {
           const data = src._data;
@@ -676,22 +618,30 @@
         updateLegend();
       });
 
+      // Ensure initial Pickr button shows default color (sometimes theme defers paint)
+      pickr.on('init', (instance) => {
+        const btn = document.querySelector(`#picker-${layerId} .pcr-button`);
+        if (btn) btn.style.background = defaultColor;
+      });
+
       // Visibility toggle
       let visible = true;
       document.getElementById(`toggle-${layerId}`).addEventListener('click', () => {
         visible = !visible;
         map.setLayoutProperty(circleLayerId, 'visibility', visible ? 'visible' : 'none');
+        // reflect visibility in chip opacity
+        document.getElementById(`chip-${layerId}`).style.opacity = visible ? '1' : '0.35';
         updateLegend();
       });
 
       // Remove layer
       document.getElementById(`remove-${layerId}`).addEventListener('click', () => {
-        // remove UI
+        // UI
         card.remove();
-        // remove map things
+        // Map
         if (map.getLayer(circleLayerId)) map.removeLayer(circleLayerId);
         if (map.getSource(layerId)) map.removeSource(layerId);
-        // remove from registry
+        // State
         const idx = uploadLayers.findIndex(l => l.id === layerId);
         if (idx >= 0) uploadLayers.splice(idx, 1);
         layerCount--;
@@ -704,8 +654,8 @@
 
       // File upload
       const fileInput = document.getElementById(`file-${layerId}`);
-      const statusEl = document.getElementById('uploadStatus');
-      fileInput.addEventListener('change', (e) => handleCSVUpload(e, layerId, pickr, statusEl));
+      const perLayerStatus = document.getElementById(statusId);
+      fileInput.addEventListener('change', (e) => handleCSVUpload(e, layerId, pickr, perLayerStatus));
 
       // Track
       uploadLayers.push({
@@ -714,14 +664,12 @@
         circleLayerId,
         nameInputId: `name-${layerId}`,
         pickr,
+        statusId,
         get visible() { return visible; }
       });
 
-      // refresh legend
+      // refresh legend immediately (so newly added layer appears even before data)
       updateLegend();
-
-      // return the input id so caller can open the dialog
-      return { fileInputId: `file-${layerId}` };
     }
 
     // Handle CSV for a given layer
@@ -730,6 +678,8 @@
       if (!file) return;
 
       statusEl.textContent = "Uploading...";
+      document.getElementById('uploadStatus').textContent = "Uploading...";
+
       Papa.parse(file, {
         header: true,
         complete: async function(results) {
@@ -767,11 +717,13 @@
             }
           }
 
+          const name = (document.getElementById(`name-${layerId}`)?.value || 'Layer').trim();
           if (features.length > 0) {
-            const name = document.getElementById(`name-${layerId}`).value || 'Layer';
             statusEl.textContent = `✅ ${features.length} locations added to ${name}.`;
+            document.getElementById('uploadStatus').textContent = `✅ Added ${features.length} locations to ${name}.`;
           } else {
             statusEl.textContent = "⚠️ No valid locations found in the file.";
+            document.getElementById('uploadStatus').textContent = "⚠️ No valid locations found in the file.";
           }
 
           const uploadedGeojson = { type:"FeatureCollection", features };
@@ -785,6 +737,7 @@
         },
         error: function(err) {
           statusEl.textContent = "❌ Upload failed: " + err.message;
+          document.getElementById('uploadStatus').textContent = "❌ Upload failed: " + err.message;
         }
       });
     }
