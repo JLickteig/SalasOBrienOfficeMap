@@ -86,26 +86,24 @@ button:hover {
   }
   
 
-/* Force Pickr preview button square */
-#color-picker .pcr-button {
-  width: 100% !important;
-  height: 100% !important;
-  aspect-ratio: 1 / 1 !important;
-  border-radius: 4px;  /* optional */
-  box-sizing: border-box;
-}
+#color-picker { margin: 5px 0; }
 
-/* Row alignment for color square + label */
-.color-picker-row {
-  display: flex;
-  align-items: center;   /* ✅ centers vertically */
-  gap: 10px;
-}
-
-.color-picker-row label {
-  line-height: 1.4;
-  font-size: 13px;
-}
+  /* Color picker row */
+  .color-picker-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  #color-picker {
+    height: 28px;
+    width: 28px;
+    flex-shrink: 0;
+  }
+  .color-picker-row label {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+  }
 
 /* Style the default "Choose File" button */
 input[type="file"]::file-selector-button {
@@ -687,6 +685,7 @@ confirmBtn.onclick = () => {
   </script>
 </body>
 </html>
+
 
 
 
