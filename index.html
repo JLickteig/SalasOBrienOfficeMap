@@ -124,6 +124,25 @@
     select { width: 100%; min-height: 160px; font-size: 13px; }
     .muted { color: var(--muted); font-size: 12px; }
 
+    /* File input button — match your buttons but smaller text */
+    input[type="file"] {
+      width: 100%;
+      font-size: 13px;
+    }
+    input[type="file"]::file-selector-button {
+      font-size: 12px;            /* smaller text */
+      font-weight: 600;
+      color: #000;
+      background: #fff;
+      border: 2px solid var(--brand);
+      border-radius: 999px;
+      padding: 6px 12px;
+      margin-right: 10px;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+    input[type="file"]::file-selector-button:hover { background: var(--brand); color: #fff; }
+
     /* Layer cards */
     .layer-card {
       border: 1px solid var(--line);
@@ -147,18 +166,24 @@
     .icon-btn:hover { background: #f3f4f6; }
     .layer-body { display: grid; gap: 8px; }
     .layer-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    input[type="file"] { width: 100%; font-size: 13px; }
 
     /* Pickr sizing + containment */
     .pickr { flex: 0 0 auto; }
     .pickr .pcr-button { width: 24px; height: 24px; border-radius: 6px; }
 
-    /* Map legend (printed too) */
+    /* Map legend (centered; hidden until a layer is added) */
     .map-legend {
-      position: absolute; left: 14px; bottom: 14px;
-      background: rgba(255,255,255,0.96); border: 1px solid var(--line);
-      border-radius: 10px; box-shadow: var(--shadow);
-      padding: 10px 12px; z-index: 4; min-width: 180px;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 14px;
+      background: rgba(255,255,255,0.96);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      padding: 10px 12px;
+      z-index: 4;
+      min-width: 180px;
     }
     .map-legend h4 { margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #111; }
     .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #222; margin: 4px 0; }
@@ -175,7 +200,7 @@
         <button id="reachOff" class="active" aria-pressed="true">Hide Reach</button>
         <button id="reachOn" aria-pressed="false">Show Reach</button>
       </div>
-      <div class="muted" style="margin-top:6px;">Shows a 3-hour driving area around offices (opacity 0.2).</div>
+      <div class="muted" style="margin-top:6px;">Shows a 3-hour driving area around offices.</div>
     </div>
 
     <!-- Filters -->
@@ -250,8 +275,8 @@
   <!-- Map -->
   <div id="map"></div>
 
-  <!-- Legend (printed) -->
-  <div id="legend" class="map-legend" aria-label="Legend">
+  <!-- Legend (centered over map; hidden until a layer is added) -->
+  <div id="legend" class="map-legend" aria-label="Legend" style="display:none;">
     <h4>Legend</h4>
     <div id="legendItems"></div>
   </div>
@@ -283,9 +308,7 @@
     let originalGeojson = null;
     const OFFICE_SOURCE = 'offices';
     const OFFICE_LAYER = 'offices-layer';
-
-    // Halo source for OFFICES ONLY
-    const HALO_OFFICES_SOURCE = 'halo-offices';
+    const HALO_OFFICES_SOURCE = 'halo-offices'; // offices-only halos
 
     // Upload layers state
     const MAX_LAYERS = 3;
@@ -405,16 +428,14 @@
         // halo layer (OFFICES ONLY; no borders)
         ensureFillLayer(HALO_OFFICES_SOURCE, 'halo-offices-fill', '#009de0', OFFICE_LAYER);
 
-        // build filters
+        // build filters & popups
         buildFilters(originalGeojson);
-
-        // popups for offices
         wireOfficePopups();
 
         // reach initial state
         setReach(false);
 
-        // initial legend
+        // initial legend (hidden until user adds a layer)
         updateLegend();
 
       } catch (e) {
@@ -511,19 +532,31 @@
       setHaloData(HALO_OFFICES_SOURCE, dissolved);
     }
 
-    // Legend
+    // Legend (hidden until a user layer exists & is visible)
     function updateLegend() {
-      const itemsEl = document.getElementById('legendItems');
+      const legendEl = document.getElementById('legend');
+      const itemsEl  = document.getElementById('legendItems');
+
+      const anyUserLayers = uploadLayers.length > 0 && uploadLayers.some(l => l.visible);
+      if (!anyUserLayers) {
+        legendEl.style.display = 'none';
+        itemsEl.innerHTML = '';
+        return;
+      }
+
+      legendEl.style.display = ''; // show
+
+      // Rebuild items
       itemsEl.innerHTML = '';
 
-      // Offices (always)
+      // Always include Offices once legend is shown
       addLegendItem(itemsEl, '#009de0', 'Offices');
 
-      // Show ALL added layers (visible ones), even before data is uploaded
+      // Include all visible user layers (even pre-upload so users see their color/name)
       for (const l of uploadLayers) {
         if (!l.visible) continue;
         const color = l.pickr.getColor().toHEXA().toString();
-        const name = document.getElementById(l.nameInputId).value || 'Layer';
+        const name  = document.getElementById(l.nameInputId).value || 'Layer';
         addLegendItem(itemsEl, color, name);
       }
     }
@@ -538,15 +571,15 @@
     const uploadLayersContainer = document.getElementById('uploadLayers');
     const addLayerBtn = document.getElementById('addLayerBtn');
 
-    // Do NOT auto-open the file picker; just add a new set of inputs
     addLayerBtn.addEventListener('click', () => {
       if (layerCount >= MAX_LAYERS) { alert('You can add up to 3 layers.'); return; }
       addUploadLayer();
       if (layerCount >= MAX_LAYERS) addLayerBtn.disabled = true;
+      updateLegend();
     });
 
     function randomBrandishColor(seed) {
-      const palette = ['#c026d3', '#16a34a', '#ea580c', '#2563eb', '#0ea5e9', '#f59e0b'];
+      const palette = ['#000086', '#16a34a', '#ea580c', '#2563eb', '#0ea5e9', '#f59e0b']; // first = #000086
       return palette[(seed - 1) % palette.length];
     }
 
@@ -601,13 +634,22 @@
         default: defaultColor,
         components: { preview: true, opacity: false, hue: true, interaction: { hex: true, input: true } }
       });
-      // Keep chip + map layer color in sync
+
+      // Ensure initial UI shows defaultColor and stays in sync
+      pickr.on('init', () => {
+        pickr.setColor(defaultColor, true); // update internal + UI state
+        pickr.applyColor(true);
+        const btn = document.querySelector(`#picker-${layerId} .pcr-button`);
+        if (btn) btn.style.background = defaultColor;
+      });
+
+      // Keep chip + picker button + map layer color in sync
       pickr.on('change', (color) => {
         const hex = color.toHEXA().toString();
-        document.getElementById(`chip-${layerId}`).style.background = hex;         // chip updates
+        document.getElementById(`chip-${layerId}`).style.background = hex;
         const pickerButton = document.querySelector(`#picker-${layerId} .pcr-button`);
-        if (pickerButton) pickerButton.style.background = hex;                     // ensure selector box visually updates
-        map.setPaintProperty(circleLayerId, 'circle-color', hex);                  // map updates
+        if (pickerButton) pickerButton.style.background = hex;
+        map.setPaintProperty(circleLayerId, 'circle-color', hex);
         // rewrite feature colors for popups
         const src = map.getSource(layerId);
         if (src) {
@@ -618,18 +660,11 @@
         updateLegend();
       });
 
-      // Ensure initial Pickr button shows default color (sometimes theme defers paint)
-      pickr.on('init', (instance) => {
-        const btn = document.querySelector(`#picker-${layerId} .pcr-button`);
-        if (btn) btn.style.background = defaultColor;
-      });
-
       // Visibility toggle
       let visible = true;
       document.getElementById(`toggle-${layerId}`).addEventListener('click', () => {
         visible = !visible;
         map.setLayoutProperty(circleLayerId, 'visibility', visible ? 'visible' : 'none');
-        // reflect visibility in chip opacity
         document.getElementById(`chip-${layerId}`).style.opacity = visible ? '1' : '0.35';
         updateLegend();
       });
@@ -668,7 +703,7 @@
         get visible() { return visible; }
       });
 
-      // refresh legend immediately (so newly added layer appears even before data)
+      // refresh legend immediately (new layer appears; legend becomes visible)
       updateLegend();
     }
 
@@ -755,7 +790,7 @@
       map.on('mouseleave', circleId, () => { map.getCanvas().style.cursor = ''; popup.remove(); });
     }
 
-    // ===== Export (includes legend) =====
+    // ===== Export (includes legend, centered) =====
     document.getElementById('exportMap').addEventListener('click', () => {
       const panel = document.getElementById('panel');
       const controls = document.querySelectorAll('.mapboxgl-ctrl');
@@ -813,16 +848,18 @@
         // 1) draw cropped map
         ctx.drawImage(mapCanvas, sx, sy, sw, sh, 0, 0, exportCanvas.width, exportCanvas.height);
 
-        // 2) render legend to a canvas and place it bottom-left in final image
+        // 2) render legend to a canvas and place it centered at bottom
         const legendEl = document.getElementById('legend');
-        if (legendEl) {
+        if (legendEl && legendEl.style.display !== 'none') {
           const legendCanvas = await html2canvas(legendEl, { backgroundColor: null, scale: 2 });
           const pad = 24;
-          const maxWidth = Math.min(legendCanvas.width, Math.floor(exportCanvas.width * 0.35));
+          const maxWidth = Math.min(legendCanvas.width, Math.floor(exportCanvas.width * 0.5)); // up to 50%
           const scale = maxWidth / legendCanvas.width;
           const dw = legendCanvas.width * scale;
           const dh = legendCanvas.height * scale;
-          ctx.drawImage(legendCanvas, pad, exportCanvas.height - dh - pad, dw, dh);
+          const dx = (exportCanvas.width - dw) / 2; // centered
+          const dy = exportCanvas.height - dh - pad;
+          ctx.drawImage(legendCanvas, dx, dy, dw, dh);
         }
 
         const img = exportCanvas.toDataURL("image/png");
