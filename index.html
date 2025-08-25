@@ -16,189 +16,114 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/classic.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
 
-<style>
-  body {
-    margin: 0;
-    padding: 0;
-    font-family: Arial, sans-serif;
-  }
+  <!-- Turf (used only as a fallback if Isochrone API fails) -->
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
-  #map {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 100%;
-  }
+  <style>
+    body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
 
-  /* -------------------- FILTERS PANEL -------------------- */
-  #filters {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    background: #fff;
-    padding: 5px;
-    border-radius: 4px;
-    z-index: 1;
-    max-width: 260px;
-    transform-origin: top left;
-  }
+    /* -------------------- FILTERS PANEL -------------------- */
+    #filters {
+      position: absolute;
+      top: 10px; left: 10px;
+      background: #fff;
+      padding: 5px;
+      border-radius: 4px;
+      z-index: 1;
+      max-width: 260px;
+      transform-origin: top left;
+    }
 
-  /* -------------------- BUTTONS -------------------- */
-  .so-btn {
-    display: block;
-    width: 100%;
-    margin: 10px 0;
-    padding: 10px;
-    font-size: 14px;
-    font-weight: normal;
-    color: #000;
-    background: #fff;
-    border: 2px solid #009de0;
-    border-radius: 50px;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s;
-  }
-  .so-btn:hover {
-    background: #009de0;
-    color: #fff;
-  }
+    /* -------------------- BUTTONS -------------------- */
+    .so-btn {
+      display: block;
+      width: 100%;
+      margin: 10px 0;
+      padding: 10px;
+      font-size: 14px;
+      font-weight: normal;
+      color: #000;
+      background: #fff;
+      border: 2px solid #009de0;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    .so-btn:hover { background: #009de0; color: #fff; }
+    .so-btn--inline { display: inline-flex; width: auto; padding: 10px 24px; }
 
-  /* Overlay/inline pill buttons */
-  .so-btn--inline {
-    display: inline-flex;
-    width: auto;
-    padding: 10px 24px;
-  }
+    /* -------------------- TYPOGRAPHY -------------------- */
+    label { font-weight: bold; margin-bottom: 6px; font-size: 14px; }
+    .subhead { font-weight: normal; font-size: 12px; display: block; margin-top: 2px; }
 
-  /* -------------------- TYPOGRAPHY -------------------- */
-  label {
-    font-weight: bold;
-    margin-bottom: 6px;
-    font-size: 14px;
-  }
-  .subhead {
-    font-weight: normal;
-    font-size: 12px;
-    display: block;
-    margin-top: 2px;
-  }
+    .mapboxgl-popup { font-family: Arial, sans-serif; font-size: 13px; }
+    .mapboxgl-popup-content { white-space: pre-line; min-width: max-content; max-width: 400px; }
 
-  .mapboxgl-popup {
-    font-family: Arial, sans-serif;
-    font-size: 13px;
-  }
-  .mapboxgl-popup-content {
-    white-space: pre-line;
-    min-width: max-content;
-    max-width: 400px;
-  }
+    /* -------------------- FORM ELEMENTS -------------------- */
+    select { margin: 5px 0; width: 100%; font-size: 13px; }
+    input[type="file"] { margin: 5px 0; width: 100%; font-size: 13px; }
+    input[type="file"]::file-selector-button {
+      font-size: 9px; font-weight: bold; color: #000;
+      background: #fff; border: 2px solid #009de0; border-radius: 50px;
+      padding: 6px 12px; margin-right: 10px; cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    input[type="file"]::file-selector-button:hover { background: #009de0; color: #fff; }
 
-  /* -------------------- FORM ELEMENTS -------------------- */
-  select {
-    margin: 5px 0;
-    width: 100%;
-    font-size: 13px;
-  }
-  input[type="file"] {
-    margin: 5px 0;
-    width: 100%;
-    font-size: 13px;
-  }
-
-  /* Style the default "Choose File" button */
-  input[type="file"]::file-selector-button {
-    font-size: 9px;
-    font-weight: bold;
-    color: #000;
-    background: #fff;
-    border: 2px solid #009de0;
-    border-radius: 50px;
-    padding: 6px 12px;
-    margin-right: 10px;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s;
-  }
-  input[type="file"]::file-selector-button:hover {
-    background: #009de0;
-    color: #fff;
-  }
-
-  /* -------------------- COLOR PICKER -------------------- */
-  #color-picker { margin: 0; }
-  .color-picker-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-  }
-  .color-picker-row label {
-    margin-top: 0px;
-    line-height: 1.2;
-  }
-
-  /* Pickr trigger: square, no border, no shadow */
-  #color-picker .pcr-button {
-    appearance: none;
-    all: unset;
-    display: inline-block;
-    width: 28px;
-    height: 28px;
-    background: var(--pcr-color) !important;
-    border-radius: 4px;
-    cursor: pointer;
-    vertical-align: top;
-    align-self: flex-start;
-    padding: 0;
-    margin: 0;
-  }
-  #color-picker .pcr-button::before,
-  #color-picker .pcr-button::after {
-    content: none !important;
-  }
-</style>
-
-
-
+    /* -------------------- COLOR PICKER -------------------- */
+    #color-picker { margin: 0; }
+    .color-picker-row { display: flex; align-items: flex-start; gap: 10px; }
+    .color-picker-row label { margin-top: 0px; line-height: 1.2; }
+    #color-picker .pcr-button {
+      appearance: none; all: unset; display: inline-block;
+      width: 28px; height: 28px; background: var(--pcr-color) !important;
+      border-radius: 4px; cursor: pointer; vertical-align: top; align-self: flex-start;
+      padding: 0; margin: 0;
+    }
+    #color-picker .pcr-button::before, #color-picker .pcr-button::after { content: none !important; }
+  </style>
 </head>
 <body>
   <!-- Sidebar Filters -->
   <div id="filters">
-	    <!-- ★ CHANGED: Added the toggle control -->
-    <div style="display:flex; align-items:center; gap:8px; margin-top:8px;"> <!-- ★ CHANGED -->
-      <input type="checkbox" id="haloToggle">                                 <!-- ★ CHANGED -->
-      <label for="haloToggle" style="margin:0; font-weight:normal;">Show driving distance (3 hours)</label> <!-- ★ CHANGED -->
-    </div> <!-- ★ CHANGED -->
-
-	  <br>
+    <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+      <input type="checkbox" id="haloToggle">
+      <label for="haloToggle" style="margin:0; font-weight:normal;">Show driving distance (3 hours)</label>
+    </div>
+    <br>
 
     <label>Filter by State/Province</label>
     <span class="subhead">(hold Ctrl + click to select multiple states/provinces)</span>
-    <select id="regionFilter" multiple size="10"></select><br><button class="so-btn" id="clearRegion">Clear State/Province</button><br>
+    <select id="regionFilter" multiple size="10"></select>
+    <br>
+    <button class="so-btn" id="clearRegion">Clear State/Province</button>
+    <br>
 
     <label>Filter by Business Unit</label><br>
-    <select id="buFilter" multiple size="5"></select><br> <button class="so-btn" id="clearBU">Clear Business Unit</button>
+    <select id="buFilter" multiple size="5"></select><br>
+    <button class="so-btn" id="clearBU">Clear Business Unit</button>
 
     <button class="so-btn" id="clearFilters">Clear All Filters</button><br>
     <hr><br>
 
     <label>Additional Addresses</label>
     <span class="subhead">Upload a .csv file of client or project locations</span>
-	  <a href="#" id="downloadTemplate" style="display:inline-block; margin-top:2px; margin-bottom: 6px; font-size:13px; text-decoration:underline; color:#009de0; cursor:pointer;">
+    <a href="#" id="downloadTemplate" style="display:inline-block; margin-top:2px; margin-bottom: 6px; font-size:13px; text-decoration:underline; color:#009de0; cursor:pointer;">
       download template
     </a>
-	<input type="file" id="csvUpload" accept=".csv"><br>
-	<div id="uploadStatus" style="font-size:12px; color:#666; margin-top:4px;"></div>
-  
-    <br>
+    <input type="file" id="csvUpload" accept=".csv"><br>
+    <div id="uploadStatus" style="font-size:12px; color:#666; margin-top:4px;"></div>
 
-<div class="color-picker-row">
-  <div id="color-picker"></div>
-  <label>
-    Marker Color 
-    <span class="subhead">(for uploaded addresses)</span>
-  </label>
-</div>
-<br>
-	  
+    <br>
+    <div class="color-picker-row">
+      <div id="color-picker"></div>
+      <label>
+        Marker Color
+        <span class="subhead">(for uploaded addresses)</span>
+      </label>
+    </div>
+    <br>
 
     <hr><br>
     <button class="so-btn" id="revertMap">Revert to Base Map</button>
@@ -212,151 +137,170 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 
   <script>
+    // --- Tokens (existing) ---
     mapboxgl.accessToken = 'pk.eyJ1IjoiamFjcXVlbGlja3RlaWciLCJhIjoiY21lZDF0aXE0MDVrYzJpcGxxYWJjcjBkaCJ9.FCV2mpRq2iULMEZJbBi0Iw';
     const GOOGLE_MAPS_KEY = "AIzaSyBdVVKVelSKtsN9F6wTh-S57j-r1TbvNXw";
 
+    // --- Isochrone settings and halo IDs (new) ---
+    const ISOCHRONE_MINUTES = 180;
+    const ISOCHRONE_PROFILE = 'driving'; // or 'driving-traffic' if enabled
+    const isoCache = new Map();
+
+    const HALO_OFFICES_SOURCE   = 'halo-offices';
+    const HALO_UPLOADED_SOURCE  = 'halo-uploaded';
+    const HALO_OFFICES_FILL     = 'halo-offices-fill';
+    const HALO_OFFICES_OUTLINE  = 'halo-offices-outline';
+    const HALO_UPLOADED_FILL    = 'halo-uploaded-fill';
+    const HALO_UPLOADED_OUTLINE = 'halo-uploaded-outline';
+
+    // Map
     const map = new mapboxgl.Map({
       container: 'map',
       style: 'mapbox://styles/jacquelickteig/cm19xymc400tt01pde8ul6loi',
       center: [-98.5795, 39.8283],
       zoom: 3,
-	  preserveDrawingBuffer: true   // 👈 enables capture of WebGL canvas
+      preserveDrawingBuffer: true
     });
-	  
-// ✅ Add zoom controls bottom-right
-map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
 
-	  // ✅ Customize zoom step
-map.on('load', () => {
-  const buttons = document.querySelectorAll('.mapboxgl-ctrl-zoom-in, .mapboxgl-ctrl-zoom-out');
-  buttons.forEach(btn => {
-    btn.onclick = (e) => {
-      e.preventDefault();
-      const step = 0.5; // adjust zoom increment here
-      if (btn.classList.contains('mapboxgl-ctrl-zoom-in')) {
-        map.zoomTo(map.getZoom() + step, { duration: 300 });
-      } else {
-        map.zoomTo(map.getZoom() - step, { duration: 300 });
-      }
-    };
-  });
-});
+    // Controls bottom-right, custom zoom step
+    map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+    map.on('load', () => {
+      const buttons = document.querySelectorAll('.mapboxgl-ctrl-zoom-in, .mapboxgl-ctrl-zoom-out');
+      buttons.forEach(btn => {
+        btn.onclick = (e) => {
+          e.preventDefault();
+          const step = 0.5;
+          if (btn.classList.contains('mapboxgl-ctrl-zoom-in')) {
+            map.zoomTo(map.getZoom() + step, { duration: 300 });
+          } else {
+            map.zoomTo(map.getZoom() - step, { duration: 300 });
+          }
+        };
+      });
+    });
 
-	  
     let originalGeojson = null;
     let uploadedLayerId = "uploaded-layer";
     let currentMarkerColor = "#000086"; // default color
+    const haloToggle = document.getElementById('haloToggle');
 
-	   // ★ CHANGED: Halo constants and helper functions
-    const HALO_MULTIPLIER = 10;             // ★ CHANGED
-    const BASE_RADIUS = 6;                 // ★ CHANGED
-    const OFFICES_LAYER_ID = 'offices-layer';   // ★ CHANGED
-    const OFFICES_HALO_ID  = 'offices-halo';    // ★ CHANGED
-    const UPLOADED_HALO_ID = 'uploaded-halo';   // ★ CHANGED
+    // Color picker
+    const pickr = Pickr.create({
+      el: '#color-picker',
+      theme: 'classic',
+      default: currentMarkerColor,
+      components: {
+        preview: true,
+        opacity: false,
+        hue: true,
+        interaction: { hex: true, input: true }
+      }
+    });
 
-    function addOfficesHalo() {            // ★ CHANGED
-      if (!map.getLayer(OFFICES_LAYER_ID)) return;
-      if (!map.getLayer(OFFICES_HALO_ID)) {
+    pickr.on('change', (color) => {
+      currentMarkerColor = color.toHEXA().toString();
+      pickr.applyColor(true);
+      syncUploadedHaloColor(); // keep halo outline/fill in sync
+
+      if (map.getLayer(uploadedLayerId)) {
+        map.setPaintProperty(uploadedLayerId, 'circle-color', currentMarkerColor);
+        const src = map.getSource(uploadedLayerId);
+        if (src) {
+          const data = src._data;
+          data.features.forEach(f => f.properties.color = currentMarkerColor);
+          src.setData(data);
+        }
+      }
+    });
+
+    function syncUploadedHaloColor() {
+      if (map.getLayer(HALO_UPLOADED_FILL)) {
+        map.setPaintProperty(HALO_UPLOADED_FILL, 'fill-color', currentMarkerColor);
+      }
+      if (map.getLayer(HALO_UPLOADED_OUTLINE)) {
+        map.setPaintProperty(HALO_UPLOADED_OUTLINE, 'line-color', currentMarkerColor);
+      }
+    }
+
+    function scaleFiltersPanel() {
+      const panel = document.getElementById('filters');
+      const vh = window.innerHeight;
+      const panelHeight = panel.scrollHeight;
+      const scale = Math.min(1, (vh - 20) / panelHeight);
+      panel.style.transform = `scale(${scale})`;
+    }
+    window.addEventListener('resize', scaleFiltersPanel);
+    window.addEventListener('load', scaleFiltersPanel);
+
+    // --- Isochrone helpers ---
+    async function fetchIsochronePolygon(lng, lat) {
+      const key = `${lng.toFixed(6)},${lat.toFixed(6)}`;
+      if (isoCache.has(key)) return isoCache.get(key);
+
+      const url = `https://api.mapbox.com/isochrone/v1/mapbox/${ISOCHRONE_PROFILE}/${lng},${lat}` +
+                  `?contours_minutes=${ISOCHRONE_MINUTES}&polygons=true&generalize=10` +
+                  `&access_token=${mapboxgl.accessToken}`;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Isochrone fetch failed');
+        const gj = await res.json();
+        if (!gj.features || !gj.features.length) throw new Error('No isochrone features');
+
+        const poly = { type: 'Feature', geometry: gj.features[0].geometry, properties: {} };
+        isoCache.set(key, poly);
+        return poly;
+      } catch (err) {
+        // Fallback: ~180 miles at 60 mph ≈ 289.7 km geodesic circle
+        const km = 289.7;
+        const circle = turf.circle([lng, lat], km, { steps: 128, units: 'kilometers' });
+        isoCache.set(key, circle);
+        return circle;
+      }
+    }
+
+    async function buildIsochronesForFeatures(pointFeatures) {
+      const polys = [];
+      const batchSize = 5;
+      for (let i = 0; i < pointFeatures.length; i += batchSize) {
+        const batch = pointFeatures.slice(i, i + batchSize);
+        const tasks = batch.map(async (f) => {
+          const [lng, lat] = f.geometry.coordinates;
+          return await fetchIsochronePolygon(lng, lat);
+        });
+        const results = await Promise.all(tasks);
+        polys.push(...results);
+      }
+      return { type: 'FeatureCollection', features: polys };
+    }
+
+    function ensureHaloLayers(sourceId, fillId, outlineId, colorFill, colorOutline, beforeLayerId) {
+      if (!map.getSource(sourceId)) {
+        map.addSource(sourceId, { type: 'geojson', data: { type:'FeatureCollection', features: [] } });
+      }
+      if (!map.getLayer(fillId)) {
         map.addLayer({
-          id: OFFICES_HALO_ID,
-          type: 'circle',
-          source: map.getLayer(OFFICES_LAYER_ID).source,
-          paint: {
-            'circle-radius': BASE_RADIUS * HALO_MULTIPLIER,
-            'circle-color': '#009de0',
-            'circle-opacity': 0.1,
-			  'circle-pitch-scale': 'viewport'
-          }
-        }, OFFICES_LAYER_ID); // insert below the main dots
+          id: fillId,
+          type: 'fill',
+          source: sourceId,
+          paint: { 'fill-color': colorFill, 'fill-opacity': 0.15 }
+        }, beforeLayerId);
       }
-    }
-
-    function removeOfficesHalo() {         // ★ CHANGED
-      if (map.getLayer(OFFICES_HALO_ID)) map.removeLayer(OFFICES_HALO_ID);
-    }
-
-    function addUploadedHalo() {           // ★ CHANGED
-      if (!map.getSource(uploadedLayerId)) return;
-      if (!map.getLayer(UPLOADED_HALO_ID)) {
+      if (!map.getLayer(outlineId)) {
         map.addLayer({
-          id: UPLOADED_HALO_ID,
-          type: 'circle',
-          source: uploadedLayerId,
-          paint: {
-            'circle-radius': BASE_RADIUS * HALO_MULTIPLIER,
-            'circle-color': currentMarkerColor,
-            'circle-opacity': 0.2,
-			  'circle-pitch-scale': 'viewport'
-
-          }
-        }, uploadedLayerId); // insert below uploaded dots
+          id: outlineId,
+          type: 'line',
+          source: sourceId,
+          paint: { 'line-color': colorOutline, 'line-width': 1 }
+        }, beforeLayerId);
       }
     }
 
-    function removeUploadedHalo() {        // ★ CHANGED
-      if (map.getLayer(UPLOADED_HALO_ID)) map.removeLayer(UPLOADED_HALO_ID);
+    function setHaloData(sourceId, fc) {
+      const src = map.getSource(sourceId);
+      if (src) src.setData(fc);
     }
 
-    function syncUploadedHaloColor() {     // ★ CHANGED
-      if (map.getLayer(UPLOADED_HALO_ID)) {
-        map.setPaintProperty(UPLOADED_HALO_ID, 'circle-color', currentMarkerColor);
-      }
-    }
-
-    // ★ CHANGED: Get the toggle element early so it exists for later checks
-    const haloToggle = document.getElementById('haloToggle'); // ★ CHANGED
-
-// Init Pickr
-const pickr = Pickr.create({
-  el: '#color-picker',
-  theme: 'classic',
-  default: currentMarkerColor,
-  components: {
-    preview: true,
-    opacity: false,
-    hue: true,
-    interaction: {
-      hex: true,
-      input: true
-    }
-  }
-});
-
-// Always update the preview + markers as they change
-pickr.on('change', (color) => {
-  currentMarkerColor = color.toHEXA().toString();
-  pickr.applyColor(true);
-syncUploadedHaloColor(); // ✅ keep halo in sync
-
-  if (map.getLayer(uploadedLayerId)) {
-    // Update marker dot colors
-    map.setPaintProperty(uploadedLayerId, 'circle-color', currentMarkerColor);
-
-    // 🔑 Also update the popup header color by rewriting the source data
-    const src = map.getSource(uploadedLayerId);
-    if (src) {
-      const data = src._data; // current geojson
-      data.features.forEach(f => f.properties.color = currentMarkerColor);
-      src.setData(data);
-    }
-  }
-});
-
-
-function scaleFiltersPanel() {
-  const panel = document.getElementById('filters');
-  const vh = window.innerHeight;
-  const panelHeight = panel.scrollHeight;
-
-  // scale down if taller than viewport - 20px padding
-  const scale = Math.min(1, (vh - 20) / panelHeight);
-  panel.style.transform = `scale(${scale})`;
-}
-
-window.addEventListener('resize', scaleFiltersPanel);
-window.addEventListener('load', scaleFiltersPanel);
-
-
+    // --- Map load ---
     map.on('load', async () => {
       try {
         // Load dataset
@@ -365,6 +309,7 @@ window.addEventListener('load', scaleFiltersPanel);
         const geojson = await res.json();
         originalGeojson = geojson;
 
+        // Offices points
         map.addSource('offices', { type: 'geojson', data: geojson });
         map.addLayer({
           id: 'offices-layer',
@@ -372,6 +317,10 @@ window.addEventListener('load', scaleFiltersPanel);
           source: 'offices',
           paint: { 'circle-radius': 6, 'circle-color': '#009de0' }
         });
+
+        // Prepare empty halo sources and layers under the points
+        ensureHaloLayers(HALO_OFFICES_SOURCE, HALO_OFFICES_FILL, HALO_OFFICES_OUTLINE, '#009de0', '#009de0', 'offices-layer');
+        ensureHaloLayers(HALO_UPLOADED_SOURCE, HALO_UPLOADED_FILL, HALO_UPLOADED_OUTLINE, currentMarkerColor, currentMarkerColor, 'offices-layer');
 
         // Filters
         const regionSelect = document.getElementById('regionFilter');
@@ -381,38 +330,39 @@ window.addEventListener('load', scaleFiltersPanel);
         const provinces = [...new Set(geojson.features.filter(f => f.properties.country === "CAN").map(f => f.properties.state).filter(Boolean))].sort();
         const bus = [...new Set(geojson.features.map(f => f.properties.bu).filter(Boolean))].sort();
 
-
         const caGroup = document.createElement('optgroup');
         caGroup.label = "Canada";
         provinces.forEach(p => {
           const opt=document.createElement('option');
-          opt.value="CAN|"+p;
-          opt.textContent=p;
+          opt.value="CAN|"+p; opt.textContent=p;
           caGroup.appendChild(opt);
         });
-		
-	   const usGroup = document.createElement('optgroup');
+
+        const usGroup = document.createElement('optgroup');
         usGroup.label = "United States";
         states.forEach(s => {
           const opt=document.createElement('option');
-          opt.value="US|"+s;
-          opt.textContent=s;
+          opt.value="US|"+s; opt.textContent=s;
           usGroup.appendChild(opt);
         });
 
-         regionSelect.appendChild(caGroup);
-		 regionSelect.appendChild(usGroup);
-       
+        regionSelect.appendChild(caGroup);
+        regionSelect.appendChild(usGroup);
 
         bus.forEach(b => {
           const opt=document.createElement('option');
-          opt.value=b;
-          opt.textContent=b;
+          opt.value=b; opt.textContent=b;
           buSelect.appendChild(opt);
         });
 
         function getSelectedValues(select) {
           return Array.from(select.selectedOptions).map(opt => opt.value);
+        }
+
+        async function rebuildOfficeHalosFor(featuresFC) {
+          const pts = featuresFC.features.filter(f => f.geometry && f.geometry.type === 'Point');
+          const fc = await buildIsochronesForFeatures(pts);
+          setHaloData(HALO_OFFICES_SOURCE, fc);
         }
 
         function applyFilters() {
@@ -429,370 +379,346 @@ window.addEventListener('load', scaleFiltersPanel);
                 const regionCode = props.country + "|" + props.state;
                 if (!selectedRegions.includes(regionCode)) match = false;
               }
-
               if (selectedBUs.length > 0 && !selectedBUs.includes(props.bu)) match = false;
-
               return match;
             })
           };
 
           map.getSource('offices').setData(filtered);
+
+          if (haloToggle.checked) {
+            (async () => { await rebuildOfficeHalosFor(filtered); })();
+          }
         }
 
         regionSelect.addEventListener('change', applyFilters);
         buSelect.addEventListener('change', applyFilters);
 
-     // 🔹 Clear State/Province only
+        // Clear buttons
         document.getElementById('clearRegion').addEventListener('click', () => {
           regionSelect.selectedIndex = -1;
           applyFilters();
         });
 
-        // 🔹 Clear Business Unit only
         document.getElementById('clearBU').addEventListener('click', () => {
           buSelect.selectedIndex = -1;
           applyFilters();
         });
 
-        // 🔹 Clear All
         document.getElementById('clearFilters').addEventListener('click', () => {
           regionSelect.selectedIndex = -1;
           buSelect.selectedIndex = -1;
           map.getSource('offices').setData(originalGeojson);
+          if (haloToggle.checked) {
+            (async () => { await rebuildOfficeHalosFor(originalGeojson); })();
+          }
         });
 
-        // Base Popups
-const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
+        // Popups
+        const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
+        map.on('mouseenter', 'offices-layer', (e) => {
+          map.getCanvas().style.cursor = 'pointer';
+          const props = e.features[0].properties;
+          popup
+            .setLngLat(e.features[0].geometry.coordinates)
+            .setHTML(
+              `<div style="line-height:1;">
+                 <div style="font-weight:bold; color:#009DE0; margin:0;">${props.officeName || ''}</div>
+                 <div style="font-size:11px; color:#333; margin:0;">${props.address || ''}</div>
+                 <div style="font-size:11px; color:#666; margin:0;">${props.phone || ''}</div>
+                 <div style="font-size:11px; color:#666; margin:0;">${props.bu || ''}</div>
+               </div>`
+            ).addTo(map);
+        });
+        map.on('mouseleave', 'offices-layer', () => { map.getCanvas().style.cursor = ''; popup.remove(); });
 
-map.on('mouseenter', 'offices-layer', (e) => {
-  map.getCanvas().style.cursor = 'pointer';
-  const props = e.features[0].properties;
-popup
-  .setLngLat(e.features[0].geometry.coordinates)
-  .setHTML(
-    `<div style="line-height:1;">
-       <div style="font-weight:bold; color:#009DE0; margin:0;">${props.officeName || ''}</div>
-       <div style="font-size:11px; color:#333; margin:0;">${props.address || ''}</div>
-       <div style="font-size:11px; color:#666; margin:0;">${props.phone || ''}</div>
-       <div style="font-size:11px; color:#666; margin:0;">${props.bu || ''}</div>
-     </div>`
-  )
-  .addTo(map);
+        // CSV Upload
+        document.getElementById('csvUpload').addEventListener('change', function(e){
+          const file = e.target.files[0];
+          if (!file) return;
 
+          const statusEl = document.getElementById('uploadStatus');
+          statusEl.textContent = "Uploading...";
 
+          Papa.parse(file, {
+            header: true,
+            complete: async function(results) {
+              const features = [];
 
-});
+              for (const row of results.data) {
+                let lat = parseFloat(row.Latitude);
+                let lng = parseFloat(row.Longitude);
 
-map.on('mouseleave', 'offices-layer', () => {
-  map.getCanvas().style.cursor = '';
-  popup.remove();
-});
-		  
-  // Uploaded Popups
-map.on('mouseenter', uploadedLayerId, (e) => {
-  map.getCanvas().style.cursor = 'pointer';
-  const props = e.features[0].properties;
- popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
-  `<span style="font-weight:bold; color:${props.color || '#009DE0'};">${props.officeName || '(No LABEL)'}</span><br>${props.address || ''}`
-).addTo(map);
+                if ((!lat || !lng) && row.ADDRESS) {
+                  try {
+                    const response = await fetch(
+                      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(row.ADDRESS)}&key=${GOOGLE_MAPS_KEY}`
+                    );
+                    const data = await response.json();
+                    if (data.status === "OK") {
+                      lat = data.results[0].geometry.location.lat;
+                      lng = data.results[0].geometry.location.lng;
+                    }
+                  } catch (err) {
+                    console.error("Geocoding failed for:", row.ADDRESS, err);
+                  }
+                }
 
-});
+                if (lat && lng) {
+                  features.push({
+                    type: "Feature",
+                    geometry: { type: "Point", coordinates: [lng, lat] },
+                    properties: {
+                      officeName: row["LABEL"] || row["Label"] || "",
+                      address: row.ADDRESS || "",
+                      state: row["STATE / PROVINCE"] || "",
+                      color: currentMarkerColor
+                    }
+                  });
+                }
+              }
 
+              if (features.length > 0) {
+                statusEl.textContent = "✅ Upload complete — " + features.length + " locations added.";
+              } else {
+                statusEl.textContent = "⚠️ No valid locations found in the file.";
+              }
 
-map.on('mouseleave', uploadedLayerId, () => {
-  map.getCanvas().style.cursor = '';
-  popup.remove();
-});
+              const uploadedGeojson = { type:"FeatureCollection", features };
 
+              if (map.getLayer(uploadedLayerId)) {
+                map.removeLayer(uploadedLayerId);
+                map.removeSource(uploadedLayerId);
+              }
 
+              map.addSource(uploadedLayerId, { type:"geojson", data: uploadedGeojson });
+              map.addLayer({
+                id: uploadedLayerId,
+                type: "circle",
+                source: uploadedLayerId,
+                paint: { "circle-radius": 6, "circle-color": currentMarkerColor }
+              });
 
-// CSV Upload with status updates
-document.getElementById('csvUpload').addEventListener('change', function(e){
-  const file = e.target.files[0];
-  if (!file) return;
+              // Uploaded popups
+              map.on('mouseenter', uploadedLayerId, (e) => {
+                map.getCanvas().style.cursor = 'pointer';
+                const props = e.features[0].properties;
+                popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
+                  `<span style="font-weight:bold; color:${props.color || '#009DE0'};">${props.officeName || '(No LABEL)'}</span><br>${props.address || ''}`
+                ).addTo(map);
+              });
+              map.on('mouseleave', uploadedLayerId, () => { map.getCanvas().style.cursor = ''; popup.remove(); });
 
-  const statusEl = document.getElementById('uploadStatus');
-  statusEl.textContent = "Uploading...";
-
-  Papa.parse(file, {
-    header: true,
-    complete: async function(results) {
-      const features = [];
-
-      for (const row of results.data) {
-        let lat = parseFloat(row.Latitude);
-        let lng = parseFloat(row.Longitude);
-
-        if ((!lat || !lng) && row.ADDRESS) {
-          try {
-            const response = await fetch(
-              `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(row.ADDRESS)}&key=${GOOGLE_MAPS_KEY}`
-            );
-            const data = await response.json();
-            if (data.status === "OK") {
-              lat = data.results[0].geometry.location.lat;
-              lng = data.results[0].geometry.location.lng;
+              // Build uploaded halos if toggle is on
+              if (haloToggle.checked && features.length > 0) {
+                const upPoints = features.filter(f => f.geometry && f.geometry.type === 'Point');
+                const upFc = await buildIsochronesForFeatures(upPoints);
+                map.setPaintProperty(HALO_UPLOADED_FILL, 'fill-color', currentMarkerColor);
+                map.setPaintProperty(HALO_UPLOADED_OUTLINE, 'line-color', currentMarkerColor);
+                setHaloData(HALO_UPLOADED_SOURCE, upFc);
+              }
+            },
+            error: function(err) {
+              statusEl.textContent = "❌ Upload failed: " + err.message;
             }
-          } catch (err) {
-            console.error("Geocoding failed for:", row.ADDRESS, err);
+          });
+        });
+
+        // Revert to original map
+        document.getElementById('revertMap').addEventListener('click', async () => {
+          if (map.getLayer(uploadedLayerId)) {
+            map.removeLayer(uploadedLayerId);
+            map.removeSource(uploadedLayerId);
           }
-        }
+          // Clear uploaded halos
+          setHaloData(HALO_UPLOADED_SOURCE, { type:'FeatureCollection', features: [] });
 
-if (lat && lng) {
-  features.push({
-  type: "Feature",
-  geometry: { type: "Point", coordinates: [lng, lat] },
-  properties: {
-    officeName: row["LABEL"] || row["Label"] || "",   // ✅ covers both cases
-    address: row.ADDRESS || "",
-    state: row["STATE / PROVINCE"] || "",
-    color: currentMarkerColor
-  }
-});
-console.log("Uploaded feature:", features[features.length - 1].properties);
-}
+          regionSelect.selectedIndex = -1;
+          buSelect.selectedIndex = -1;
+          pickr.setColor("#000086");
+          currentMarkerColor = "#000086";
+          document.getElementById('csvUpload').value = "";
+          map.getSource('offices').setData(originalGeojson);
 
-      }
+          // Clear upload status text
+          document.getElementById('uploadStatus').textContent = "";
 
-      // After features created
-      if (features.length > 0) {
-        statusEl.textContent = "✅ Upload complete — " + features.length + " locations added.";
-      } else {
-        statusEl.textContent = "⚠️ No valid locations found in the file.";
-      }
+          if (haloToggle.checked) {
+            await (async () => {
+              const allPoints = originalGeojson.features.filter(f => f.geometry && f.geometry.type === 'Point');
+              const fc = await buildIsochronesForFeatures(allPoints);
+              setHaloData(HALO_OFFICES_SOURCE, fc);
+            })();
+          } else {
+            setHaloData(HALO_OFFICES_SOURCE, { type:'FeatureCollection', features: [] });
+          }
+        });
 
-      const uploadedGeojson = { type:"FeatureCollection", features };
+        // Export Map as PNG
+        document.getElementById('exportMap').addEventListener('click', () => {
+          const filters = document.getElementById('filters');
+          const controls = document.querySelectorAll('.mapboxgl-ctrl');
 
-      if (map.getLayer(uploadedLayerId)) {
-        map.removeLayer(uploadedLayerId);
-        map.removeSource(uploadedLayerId);
-      }
+          // Hide UI
+          filters.style.display = 'none';
+          controls.forEach(ctrl => ctrl.style.display = 'none');
+          map.resize();
 
-      map.addSource(uploadedLayerId, { type:"geojson", data: uploadedGeojson });
-      map.addLayer({
-        id: uploadedLayerId,
-        type: "circle",
-        source: uploadedLayerId,
-        paint: { "circle-radius": 6, "circle-color": currentMarkerColor }
-      });
-		
-          // ★ CHANGED: If toggle is on, show halo for uploaded
-          if (haloToggle.checked) addUploadedHalo(); // ★ CHANGED
+          // Overlay
+          const overlay = document.createElement('div');
+          overlay.className = "export-overlay";
+          overlay.style.position = "fixed";
+          overlay.style.top = "0";
+          overlay.style.left = "0";
+          overlay.style.width = "100%";
+          overlay.style.height = "100%";
+          overlay.style.zIndex = "9999";
+          overlay.style.pointerEvents = "none";
 
+          const box = document.createElement('div');
+          box.style.position = "absolute";
+          box.style.top = "50%";
+          box.style.left = "50%";
+          box.style.width = "80%";
+          box.style.aspectRatio = "4/3";
+          box.style.transform = "translate(-50%, -50%)";
+          box.style.border = "2px dashed #666";
+          box.style.pointerEvents = "none";
+          overlay.appendChild(box);
 
-     map.on('mouseenter', uploadedLayerId, (e) => {
-  map.getCanvas().style.cursor = 'pointer';
-  const props = e.features[0].properties;
-  popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
-    `<span style="font-weight:bold; color:${props.color || '#009DE0'};">${props.officeName || '(No LABEL)'}</span><br>${props.address || ''}`
-  ).addTo(map);
-});
+          const horiz = document.createElement('div');
+          horiz.style.position = "absolute";
+          horiz.style.top = "50%";
+          horiz.style.left = "50%";
+          horiz.style.width = "30px";
+          horiz.style.height = "1px";
+          horiz.style.background = "#999";
+          horiz.style.transform = "translate(-50%, -50%)";
+          box.appendChild(horiz);
 
+          const vert = document.createElement('div');
+          vert.style.position = "absolute";
+          vert.style.top = "50%";
+          vert.style.left = "50%";
+          vert.style.height = "30px";
+          vert.style.width = "1px";
+          vert.style.background = "#999";
+          vert.style.transform = "translate(-50%, -50%)";
+          box.appendChild(vert);
 
-      map.on('mouseleave', uploadedLayerId, () => {
-        map.getCanvas().style.cursor = '';
-        popup.remove();
-      });
-    },
-    error: function(err) {
-      statusEl.textContent = "❌ Upload failed: " + err.message;
-    }
-  });
-});
+          const instructions = document.createElement('div');
+          instructions.textContent = "Use your mouse scroll wheel to adjust size. Click, hold, and move to adjust placement.";
+          instructions.style.position = "absolute";
+          instructions.style.top = "15px";
+          instructions.style.left = "50%";
+          instructions.style.transform = "translateX(-50%)";
+          instructions.style.fontSize = "14px";
+          instructions.style.color = "#fff";
+          instructions.style.background = "rgba(0,0,0,0.6)";
+          instructions.style.padding = "6px 12px";
+          instructions.style.borderRadius = "4px";
+          instructions.style.pointerEvents = "none";
+          overlay.appendChild(instructions);
 
-// Revert to original map
-document.getElementById('revertMap').addEventListener('click', () => {
-  if (map.getLayer(uploadedLayerId)) {
-    map.removeLayer(uploadedLayerId);
-    map.removeSource(uploadedLayerId);
-  }
-  removeUploadedHalo(); // ★ CHANGED
+          const buttons = document.createElement('div');
+          buttons.style.position = "absolute";
+          buttons.style.bottom = "20px";
+          buttons.style.right = "20px";
+          buttons.style.display = "flex";
+          buttons.style.gap = "12px";
+          buttons.style.zIndex = "10000";
+          buttons.style.pointerEvents = "auto";
 
-  regionSelect.selectedIndex = -1;
-  buSelect.selectedIndex = -1;
-  pickr.setColor("#000086");
-  currentMarkerColor = "#000086";
-  document.getElementById('csvUpload').value = "";
-  map.getSource('offices').setData(originalGeojson);
+          function makeButton(text) {
+            const btn = document.createElement('button');
+            btn.textContent = text;
+            btn.className = 'so-btn so-btn--inline';
+            return btn;
+          }
 
-  // ✅ Clear upload status text
-  document.getElementById('uploadStatus').textContent = "";
-});
+          const confirmBtn = makeButton("Confirm Export");
+          const cancelBtn = makeButton("Cancel");
+          buttons.appendChild(confirmBtn);
+          buttons.appendChild(cancelBtn);
+          overlay.appendChild(buttons);
+          document.body.appendChild(overlay);
 
+          confirmBtn.onclick = () => {
+            const exportCanvas = document.createElement('canvas');
+            exportCanvas.width = 2048;
+            exportCanvas.height = 1536;
 
-document.getElementById('exportMap').addEventListener('click', () => {
-  const filters = document.getElementById('filters');
-  const controls = document.querySelectorAll('.mapboxgl-ctrl');
+            const ctx = exportCanvas.getContext('2d');
+            const mapCanvas = map.getCanvas();
 
-  // Hide filters/UI
-  filters.style.display = 'none';
-  controls.forEach(ctrl => ctrl.style.display = 'none');
-  map.resize();
+            const boxRect = box.getBoundingClientRect();
+            const mapRect = map.getCanvas().getBoundingClientRect();
 
-  // === Overlay container ===
-  const overlay = document.createElement('div');
-  overlay.className = "export-overlay";  
-  overlay.style.position = "fixed";
-  overlay.style.top = "0";
-  overlay.style.left = "0";
-  overlay.style.width = "100%";
-  overlay.style.height = "100%";
-  overlay.style.zIndex = "9999";
-  overlay.style.pointerEvents = "none"; // let the map remain interactive
+            const sx = (boxRect.left - mapRect.left) * (mapCanvas.width / mapRect.width);
+            const sy = (boxRect.top - mapRect.top) * (mapCanvas.height / mapRect.height);
+            const sw = boxRect.width * (mapCanvas.width / mapRect.width);
+            const sh = boxRect.height * (mapCanvas.height / mapRect.height);
 
-  // Centered 4:3 crop box
-  const box = document.createElement('div');
-  box.style.position = "absolute";
-  box.style.top = "50%";
-  box.style.left = "50%";
-  box.style.width = "80%";        // relative width
-  box.style.aspectRatio = "4/3";
-  box.style.transform = "translate(-50%, -50%)";
-  box.style.border = "2px dashed #666";
-  box.style.pointerEvents = "none";
-  overlay.appendChild(box);
+            ctx.drawImage(mapCanvas, sx, sy, sw, sh, 0, 0, exportCanvas.width, exportCanvas.height);
 
-// Crosshairs (short ticks, centered)
-const horiz = document.createElement('div');
-horiz.style.position = "absolute";
-horiz.style.top = "50%";
-horiz.style.left = "50%";
-horiz.style.width = "30px";       // ✅ short, 30px
-horiz.style.height = "1px";
-horiz.style.background = "#999";
-horiz.style.transform = "translate(-50%, -50%)";
-box.appendChild(horiz);
+            const img = exportCanvas.toDataURL("image/png");
+            const link = document.createElement('a');
+            link.href = img;
+            link.download = "map-export-4x3.png";
+            link.click();
 
-const vert = document.createElement('div');
-vert.style.position = "absolute";
-vert.style.top = "50%";
-vert.style.left = "50%";
-vert.style.height = "30px";       // ✅ short, 30px
-vert.style.width = "1px";
-vert.style.background = "#999";
-vert.style.transform = "translate(-50%, -50%)";
-box.appendChild(vert);
+            cleanup();
+          };
 
+          cancelBtn.onclick = () => cleanup();
 
+          function cleanup() {
+            document.body.removeChild(overlay);
+            filters.style.display = '';
+            controls.forEach(ctrl => ctrl.style.display = '');
+            map.resize();
+          }
+        });
 
-  // Instruction text
-  const instructions = document.createElement('div');
-  instructions.textContent = "Use your mouse scroll wheel to adjust size. Click, hold, and move to adjust placement.";
-  instructions.style.position = "absolute";
-  instructions.style.top = "15px";
-  instructions.style.left = "50%";
-  instructions.style.transform = "translateX(-50%)";
-  instructions.style.fontSize = "14px";
-  instructions.style.color = "#fff";
-  instructions.style.background = "rgba(0,0,0,0.6)";
-  instructions.style.padding = "6px 12px";
-  instructions.style.borderRadius = "4px";
-  instructions.style.pointerEvents = "none";
-  overlay.appendChild(instructions);
+        // Halo toggle
+        haloToggle.addEventListener('change', async () => {
+          if (haloToggle.checked) {
+            const officesData = map.getSource('offices')._data;
+            const officePoints = officesData.features.filter(f => f.geometry && f.geometry.type === 'Point');
+            const fc = await buildIsochronesForFeatures(officePoints);
+            setHaloData(HALO_OFFICES_SOURCE, fc);
 
-// Buttons container (bottom-right, outside preview box)
-const buttons = document.createElement('div');
-buttons.style.position = "absolute";
-buttons.style.bottom = "20px";
-buttons.style.right = "20px";
-buttons.style.display = "flex";
-buttons.style.gap = "12px";   // spacing between buttons
-buttons.style.zIndex = "10000";
-buttons.style.pointerEvents = "auto";
-
-
-function makeButton(text) {
-  const btn = document.createElement('button');
-  btn.textContent = text;
-  btn.className = 'so-btn so-btn--inline'; 
-  return btn;
-}
-
-
-const confirmBtn = makeButton("Confirm Export");
-const cancelBtn = makeButton("Cancel");
-
-buttons.appendChild(confirmBtn);
-buttons.appendChild(cancelBtn);
-overlay.appendChild(buttons);
-
-document.body.appendChild(overlay);
-
-
-confirmBtn.onclick = () => {
-  const exportCanvas = document.createElement('canvas');
-  exportCanvas.width = 2048;     // high res
-  exportCanvas.height = 1536;    // 4:3
-
-  const ctx = exportCanvas.getContext('2d');
-  const mapCanvas = map.getCanvas();
-
-  // Use box’s bounding rectangle to crop correctly
-  const boxRect = box.getBoundingClientRect();
-  const mapRect = map.getCanvas().getBoundingClientRect();
-
-  // Relative crop within map canvas
-  const sx = (boxRect.left - mapRect.left) * (mapCanvas.width / mapRect.width);
-  const sy = (boxRect.top - mapRect.top) * (mapCanvas.height / mapRect.height);
-  const sw = boxRect.width * (mapCanvas.width / mapRect.width);
-  const sh = boxRect.height * (mapCanvas.height / mapRect.height);
-
-  // Draw cropped region scaled to 4:3 export
-  ctx.drawImage(mapCanvas, sx, sy, sw, sh, 0, 0, exportCanvas.width, exportCanvas.height);
-
-  const img = exportCanvas.toDataURL("image/png");
-  const link = document.createElement('a');
-  link.href = img;
-  link.download = "map-export-4x3.png";
-  link.click();
-
-  cleanup();
-};
-
-
-  // === Cancel export ===
-  cancelBtn.onclick = () => cleanup();
-
-  function cleanup() {
-    document.body.removeChild(overlay);
-    filters.style.display = '';
-    controls.forEach(ctrl => ctrl.style.display = '');
-    map.resize();
-  }
-});
-
-
+            const upSrc = map.getSource(uploadedLayerId);
+            if (upSrc) {
+              const upData = upSrc._data;
+              const upPoints = upData.features.filter(f => f.geometry && f.geometry.type === 'Point');
+              const upFc = await buildIsochronesForFeatures(upPoints);
+              map.setPaintProperty(HALO_UPLOADED_FILL, 'fill-color', currentMarkerColor);
+              map.setPaintProperty(HALO_UPLOADED_OUTLINE, 'line-color', currentMarkerColor);
+              setHaloData(HALO_UPLOADED_SOURCE, upFc);
+            }
+          } else {
+            setHaloData(HALO_OFFICES_SOURCE,  { type:'FeatureCollection', features: [] });
+            setHaloData(HALO_UPLOADED_SOURCE, { type:'FeatureCollection', features: [] });
+          }
+        });
 
       } catch (err) {
         console.error('Error loading dataset:', err);
       }
     });
 
-// ★ CHANGED: Halo toggle wiring (works after DOM is ready)
-    haloToggle.addEventListener('change', () => {                    // ★ CHANGED
-      if (haloToggle.checked) {                                      // ★ CHANGED
-        addOfficesHalo();                                            // ★ CHANGED
-        if (map.getSource(uploadedLayerId)) addUploadedHalo();       // ★ CHANGED
-      } else {                                                       // ★ CHANGED
-        removeOfficesHalo();                                         // ★ CHANGED
-        removeUploadedHalo();                                        // ★ CHANGED
-      }                                                              // ★ CHANGED
-    });                                                              // ★ CHANGED
-
-
     // Force Template CSV download
     document.getElementById('downloadTemplate').addEventListener('click', async (e) => {
-      e.preventDefault(); // prevent navigation
+      e.preventDefault();
       const url = "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/refs/heads/main/MapAddressTemplate.csv";
       try {
         const response = await fetch(url);
         const blob = await response.blob();
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = "MapAddressTemplate.csv"; // ✅ forces save as CSV
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        a.download = "MapAddressTemplate.csv";
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
       } catch (err) {
         console.error("Failed to download template:", err);
       }
@@ -800,17 +726,3 @@ confirmBtn.onclick = () => {
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
