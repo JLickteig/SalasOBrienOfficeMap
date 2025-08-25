@@ -198,7 +198,7 @@
     pickr.on('change', (color) => {
       currentMarkerColor = color.toHEXA().toString();
       pickr.applyColor(true);
-      syncUploadedHaloColor(); // keep halo outline/fill in sync
+      syncUploadedHaloColor(); // keep halo fill color in sync
 
       if (map.getLayer(uploadedLayerId)) {
         map.setPaintProperty(uploadedLayerId, 'circle-color', currentMarkerColor);
@@ -214,9 +214,6 @@
     function syncUploadedHaloColor() {
       if (map.getLayer(HALO_UPLOADED_FILL)) {
         map.setPaintProperty(HALO_UPLOADED_FILL, 'fill-color', currentMarkerColor);
-      }
-      if (map.getLayer(HALO_UPLOADED_OUTLINE)) {
-        map.setPaintProperty(HALO_UPLOADED_OUTLINE, 'line-color', currentMarkerColor);
       }
     }
 
@@ -271,7 +268,24 @@
       return { type: 'FeatureCollection', features: polys };
     }
 
-    function ensureHaloLayers(sourceId, fillId, outlineId, colorFill, colorOutline, beforeLayerId) {
+    // NEW: dissolve so overlaps don't stack opacity
+    function dissolvePolygons(fc) {
+      if (!fc || !fc.features || fc.features.length === 0) {
+        return { type: 'FeatureCollection', features: [] };
+      }
+      let merged = fc.features[0];
+      for (let i = 1; i < fc.features.length; i++) {
+        try {
+          merged = turf.union(merged, fc.features[i]);
+        } catch (e) {
+          console.warn('union failed for a feature, skipping', e);
+        }
+      }
+      return { type: 'FeatureCollection', features: merged ? [merged] : [] };
+    }
+
+    // No-border halo layers
+    function ensureHaloLayers(sourceId, fillId, colorFill, beforeLayerId) {
       if (!map.getSource(sourceId)) {
         map.addSource(sourceId, { type: 'geojson', data: { type:'FeatureCollection', features: [] } });
       }
@@ -280,10 +294,10 @@
           id: fillId,
           type: 'fill',
           source: sourceId,
-          paint: { 'fill-color': colorFill, 'fill-opacity': 0.15 }
+          paint: { 'fill-color': colorFill, 'fill-opacity': 0.1 } // keep at 0.1 always
         }, beforeLayerId);
       }
-      }
+    }
 
     function setHaloData(sourceId, fc) {
       const src = map.getSource(sourceId);
@@ -309,8 +323,8 @@
         });
 
         // Prepare empty halo sources and layers under the points
-        ensureHaloLayers(HALO_OFFICES_SOURCE, HALO_OFFICES_FILL, '#009de0', '#009de0', 'offices-layer');
-        ensureHaloLayers(HALO_UPLOADED_SOURCE, HALO_UPLOADED_FILL, currentMarkerColor, currentMarkerColor, 'offices-layer');
+        ensureHaloLayers(HALO_OFFICES_SOURCE, HALO_OFFICES_FILL, '#009de0', 'offices-layer');
+        ensureHaloLayers(HALO_UPLOADED_SOURCE, HALO_UPLOADED_FILL, currentMarkerColor, 'offices-layer');
 
         // Filters
         const regionSelect = document.getElementById('regionFilter');
@@ -352,7 +366,8 @@
         async function rebuildOfficeHalosFor(featuresFC) {
           const pts = featuresFC.features.filter(f => f.geometry && f.geometry.type === 'Point');
           const fc = await buildIsochronesForFeatures(pts);
-          setHaloData(HALO_OFFICES_SOURCE, fc);
+          const dissolved = dissolvePolygons(fc);
+          setHaloData(HALO_OFFICES_SOURCE, dissolved);
         }
 
         function applyFilters() {
@@ -503,9 +518,9 @@
               if (haloToggle.checked && features.length > 0) {
                 const upPoints = features.filter(f => f.geometry && f.geometry.type === 'Point');
                 const upFc = await buildIsochronesForFeatures(upPoints);
+                const upDissolved = dissolvePolygons(upFc);
                 map.setPaintProperty(HALO_UPLOADED_FILL, 'fill-color', currentMarkerColor);
-                map.setPaintProperty(HALO_UPLOADED_OUTLINE, 'line-color', currentMarkerColor);
-                setHaloData(HALO_UPLOADED_SOURCE, upFc);
+                setHaloData(HALO_UPLOADED_SOURCE, upDissolved);
               }
             },
             error: function(err) {
@@ -534,11 +549,10 @@
           document.getElementById('uploadStatus').textContent = "";
 
           if (haloToggle.checked) {
-            await (async () => {
-              const allPoints = originalGeojson.features.filter(f => f.geometry && f.geometry.type === 'Point');
-              const fc = await buildIsochronesForFeatures(allPoints);
-              setHaloData(HALO_OFFICES_SOURCE, fc);
-            })();
+            const allPoints = originalGeojson.features.filter(f => f.geometry && f.geometry.type === 'Point');
+            const fc = await buildIsochronesForFeatures(allPoints);
+            const dissolved = dissolvePolygons(fc);
+            setHaloData(HALO_OFFICES_SOURCE, dissolved);
           } else {
             setHaloData(HALO_OFFICES_SOURCE, { type:'FeatureCollection', features: [] });
           }
@@ -676,16 +690,17 @@
             const officesData = map.getSource('offices')._data;
             const officePoints = officesData.features.filter(f => f.geometry && f.geometry.type === 'Point');
             const fc = await buildIsochronesForFeatures(officePoints);
-            setHaloData(HALO_OFFICES_SOURCE, fc);
+            const dissolved = dissolvePolygons(fc);
+            setHaloData(HALO_OFFICES_SOURCE, dissolved);
 
             const upSrc = map.getSource(uploadedLayerId);
             if (upSrc) {
               const upData = upSrc._data;
               const upPoints = upData.features.filter(f => f.geometry && f.geometry.type === 'Point');
               const upFc = await buildIsochronesForFeatures(upPoints);
+              const upDissolved = dissolvePolygons(upFc);
               map.setPaintProperty(HALO_UPLOADED_FILL, 'fill-color', currentMarkerColor);
-              map.setPaintProperty(HALO_UPLOADED_OUTLINE, 'line-color', currentMarkerColor);
-              setHaloData(HALO_UPLOADED_SOURCE, upFc);
+              setHaloData(HALO_UPLOADED_SOURCE, upDissolved);
             }
           } else {
             setHaloData(HALO_OFFICES_SOURCE,  { type:'FeatureCollection', features: [] });
@@ -716,4 +731,3 @@
   </script>
 </body>
 </html>
-
