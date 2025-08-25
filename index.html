@@ -264,7 +264,8 @@ map.on('load', () => {
           paint: {
             'circle-radius': BASE_RADIUS * HALO_MULTIPLIER,
             'circle-color': '#009de0',
-            'circle-opacity': 0.1
+            'circle-opacity': 0.1,
+			  'circle-pitch-scale': 'viewport'
           }
         }, OFFICES_LAYER_ID); // insert below the main dots
       }
@@ -284,7 +285,7 @@ map.on('load', () => {
           paint: {
             'circle-radius': BASE_RADIUS * HALO_MULTIPLIER,
             'circle-color': currentMarkerColor,
-            'circle-opacity': 0.2
+            'circle-opacity': 0.2,
 			  'circle-pitch-scale': 'viewport'
 
           }
@@ -799,6 +800,7 @@ confirmBtn.onclick = () => {
   </script>
 </body>
 </html>
+
 
 
 
