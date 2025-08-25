@@ -190,11 +190,12 @@
   </label>
 </div>
 <br>
-
-	  <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
-  <input type="checkbox" id="haloToggle">
-  <label for="haloToggle" style="margin:0; font-weight:normal;">Show driving distances</label>
-</div>
+	  
+  <!-- ★ CHANGED: Added the toggle control -->
+    <div style="display:flex; align-items:center; gap:8px; margin-top:8px;"> <!-- ★ CHANGED -->
+      <input type="checkbox" id="haloToggle">                                 <!-- ★ CHANGED -->
+      <label for="haloToggle" style="margin:0; font-weight:normal;">Show driving distances</label> <!-- ★ CHANGED -->
+    </div> <!-- ★ CHANGED -->
 
 	  <br>
 
@@ -247,18 +248,61 @@ map.on('load', () => {
     let uploadedLayerId = "uploaded-layer";
     let currentMarkerColor = "#000086"; // default color
 
-	  const HALO_MULTIPLIER = 5;
-const BASE_RADIUS = 6;
-const OFFICES_LAYER_ID = 'offices-layer';
-const OFFICES_HALO_ID  = 'offices-halo';
-const UPLOADED_HALO_ID = 'uploaded-halo';
+	   // ★ CHANGED: Halo constants and helper functions
+    const HALO_MULTIPLIER = 5;             // ★ CHANGED
+    const BASE_RADIUS = 6;                 // ★ CHANGED
+    const OFFICES_LAYER_ID = 'offices-layer';   // ★ CHANGED
+    const OFFICES_HALO_ID  = 'offices-halo';    // ★ CHANGED
+    const UPLOADED_HALO_ID = 'uploaded-halo';   // ★ CHANGED
 
-function addOfficesHalo() { ... }
-function removeOfficesHalo() { ... }
-function addUploadedHalo() { ... }
-function removeUploadedHalo() { ... }
-function syncUploadedHaloColor() { ... }
+    function addOfficesHalo() {            // ★ CHANGED
+      if (!map.getLayer(OFFICES_LAYER_ID)) return;
+      if (!map.getLayer(OFFICES_HALO_ID)) {
+        map.addLayer({
+          id: OFFICES_HALO_ID,
+          type: 'circle',
+          source: map.getLayer(OFFICES_LAYER_ID).source,
+          paint: {
+            'circle-radius': BASE_RADIUS * HALO_MULTIPLIER,
+            'circle-color': '#009de0',
+            'circle-opacity': 0.2
+          }
+        }, OFFICES_LAYER_ID); // insert below the main dots
+      }
+    }
 
+    function removeOfficesHalo() {         // ★ CHANGED
+      if (map.getLayer(OFFICES_HALO_ID)) map.removeLayer(OFFICES_HALO_ID);
+    }
+
+    function addUploadedHalo() {           // ★ CHANGED
+      if (!map.getSource(uploadedLayerId)) return;
+      if (!map.getLayer(UPLOADED_HALO_ID)) {
+        map.addLayer({
+          id: UPLOADED_HALO_ID,
+          type: 'circle',
+          source: uploadedLayerId,
+          paint: {
+            'circle-radius': BASE_RADIUS * HALO_MULTIPLIER,
+            'circle-color': currentMarkerColor,
+            'circle-opacity': 0.2
+          }
+        }, uploadedLayerId); // insert below uploaded dots
+      }
+    }
+
+    function removeUploadedHalo() {        // ★ CHANGED
+      if (map.getLayer(UPLOADED_HALO_ID)) map.removeLayer(UPLOADED_HALO_ID);
+    }
+
+    function syncUploadedHaloColor() {     // ★ CHANGED
+      if (map.getLayer(UPLOADED_HALO_ID)) {
+        map.setPaintProperty(UPLOADED_HALO_ID, 'circle-color', currentMarkerColor);
+      }
+    }
+
+    // ★ CHANGED: Get the toggle element early so it exists for later checks
+    const haloToggle = document.getElementById('haloToggle'); // ★ CHANGED
 
 // Init Pickr
 const pickr = Pickr.create({
@@ -530,7 +574,9 @@ console.log("Uploaded feature:", features[features.length - 1].properties);
         paint: { "circle-radius": 6, "circle-color": currentMarkerColor }
       });
 		
-if (haloToggle.checked) addUploadedHalo();
+          // ★ CHANGED: If toggle is on, show halo for uploaded
+          if (haloToggle.checked) addUploadedHalo(); // ★ CHANGED
+
 
      map.on('mouseenter', uploadedLayerId, (e) => {
   map.getCanvas().style.cursor = 'pointer';
@@ -558,7 +604,7 @@ document.getElementById('revertMap').addEventListener('click', () => {
     map.removeLayer(uploadedLayerId);
     map.removeSource(uploadedLayerId);
   }
-	removeUploadedHalo();
+  removeUploadedHalo(); // ★ CHANGED
 
   regionSelect.selectedIndex = -1;
   buSelect.selectedIndex = -1;
@@ -720,17 +766,16 @@ confirmBtn.onclick = () => {
       }
     });
 
-	  // 🔹 Halo toggle wiring
-const haloToggle = document.getElementById('haloToggle');
-haloToggle.addEventListener('change', () => {
-  if (haloToggle.checked) {
-    addOfficesHalo();
-    if (map.getSource(uploadedLayerId)) addUploadedHalo();
-  } else {
-    removeOfficesHalo();
-    removeUploadedHalo();
-  }
-});
+// ★ CHANGED: Halo toggle wiring (works after DOM is ready)
+    haloToggle.addEventListener('change', () => {                    // ★ CHANGED
+      if (haloToggle.checked) {                                      // ★ CHANGED
+        addOfficesHalo();                                            // ★ CHANGED
+        if (map.getSource(uploadedLayerId)) addUploadedHalo();       // ★ CHANGED
+      } else {                                                       // ★ CHANGED
+        removeOfficesHalo();                                         // ★ CHANGED
+        removeUploadedHalo();                                        // ★ CHANGED
+      }                                                              // ★ CHANGED
+    });                                                              // ★ CHANGED
 
 
     // Force Template CSV download
@@ -753,6 +798,7 @@ haloToggle.addEventListener('change', () => {
   </script>
 </body>
 </html>
+
 
 
 
