@@ -62,7 +62,7 @@
 button {
   display: block;
   width: 100%;          /* ✅ same width as filter selects */
-  margin: 6px 0;
+  margin: 10px 0;
   padding: 10px;
   font-size: 14px;
   font-weight: bold;
@@ -84,7 +84,7 @@ button:hover {
     width: 100%;
     font-size: 13px;
   }
-  #color-picker { margin: 5px 0; }
+  
 
   /* Color picker row */
   .color-picker-row {
@@ -93,10 +93,12 @@ button:hover {
     gap: 10px;
   }
 #color-picker {
-  width: 28px;
-  aspect-ratio: 1 / 1;   /* ✅ forces a square */
-  flex-shrink: 0;
+  width: 28px;          /* starting size */
+  aspect-ratio: 1 / 1;  /* ✅ always square */
+  flex-shrink: 0;       /* don’t let flexbox squeeze it */
+  box-sizing: border-box;
 }
+
 
   .color-picker-row label {
     display: flex;
@@ -685,6 +687,7 @@ confirmBtn.onclick = () => {
   </script>
 </body>
 </html>
+
 
 
 
