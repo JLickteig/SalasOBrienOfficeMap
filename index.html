@@ -30,7 +30,7 @@
     width: 100%;
   }
 
-  /* Filters panel */
+  /* -------------------- FILTERS PANEL -------------------- */
   #filters {
     position: absolute;
     top: 10px;
@@ -44,9 +44,7 @@
   }
 
   /* -------------------- BUTTONS -------------------- */
-
-  /* Sidebar buttons ONLY */
-  #filters button {
+  .so-btn {
     display: block;
     width: 100%;
     margin: 10px 0;
@@ -60,39 +58,24 @@
     cursor: pointer;
     transition: background 0.2s, color 0.2s;
   }
-
-  #filters button:hover {
+  .so-btn:hover {
     background: #009de0;
     color: #fff;
   }
 
-  /* Export overlay buttons (bottom-right) */
-  .export-overlay button {
+  /* Overlay/inline pill buttons */
+  .so-btn--inline {
+    display: inline-flex;
     width: auto;
     padding: 10px 24px;
-    font-size: 14px;
-    font-weight: bold;
-    color: #000;
-    background: #fff;
-    border: 2px solid #009de0;
-    border-radius: 50px;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s;
-  }
-
-  .export-overlay button:hover {
-    background: #009de0;
-    color: #fff;
   }
 
   /* -------------------- TYPOGRAPHY -------------------- */
-
   label {
     font-weight: bold;
     margin-bottom: 6px;
     font-size: 14px;
   }
-
   .subhead {
     font-weight: normal;
     font-size: 12px;
@@ -104,7 +87,6 @@
     font-family: Arial, sans-serif;
     font-size: 13px;
   }
-
   .mapboxgl-popup-content {
     white-space: pre-line;
     min-width: max-content;
@@ -112,13 +94,11 @@
   }
 
   /* -------------------- FORM ELEMENTS -------------------- */
-
   select {
     margin: 5px 0;
     width: 100%;
     font-size: 13px;
   }
-
   input[type="file"] {
     margin: 5px 0;
     width: 100%;
@@ -138,50 +118,44 @@
     cursor: pointer;
     transition: background 0.2s, color 0.2s;
   }
-
   input[type="file"]::file-selector-button:hover {
     background: #009de0;
     color: #fff;
   }
 
   /* -------------------- COLOR PICKER -------------------- */
-
   #color-picker { margin: 0; }
-
   .color-picker-row {
     display: flex;
-    align-items: flex-start; /* align swatch top with label top */
+    align-items: flex-start;
     gap: 10px;
   }
-
   .color-picker-row label {
     margin-top: 2px;
     line-height: 1.2;
   }
 
- /* Pickr trigger: clean square, no border, no shadow, top-aligned */
-#color-picker .pcr-button {
-  appearance: none;
-  all: unset;                 /* wipe inherited button styles */
-  display: inline-block;
-  width: 28px;
-  height: 28px;
-  border: none !important;
-  box-shadow: none !important;
-  background: var(--pcr-color) !important; /* Pickr sets this CSS var */
-  border-radius: 4px;         /* set 0 for sharp corners */
-  cursor: pointer;
-  vertical-align: top;
-  align-self: flex-start;     /* align with label top in the flex row */
-  padding: 0;
-  margin: 0;
-}
-#color-picker .pcr-button::before,
-#color-picker .pcr-button::after {
-  content: none !important;   /* kill theme overlays that look like borders */
-}
-
+  /* Pickr trigger: square, no border, no shadow */
+  #color-picker .pcr-button {
+    appearance: none;
+    all: unset;
+    display: inline-block;
+    width: 28px;
+    height: 28px;
+    background: var(--pcr-color) !important;
+    border-radius: 4px;
+    cursor: pointer;
+    vertical-align: top;
+    align-self: flex-start;
+    padding: 0;
+    margin: 0;
+  }
+  #color-picker .pcr-button::before,
+  #color-picker .pcr-button::after {
+    content: none !important;
+  }
 </style>
+
 
 
 </head>
@@ -190,12 +164,12 @@
   <div id="filters">
     <label>Filter by State/Province</label>
     <span class="subhead">(hold Ctrl + click to select multiple states/provinces)</span>
-    <select id="regionFilter" multiple size="10"></select><br><button id="clearRegion">Clear State/Province</button><br>
+    <select id="regionFilter" multiple size="10"></select><br><button class="so-btn" id="clearRegion">Clear State/Province</button><br>
 
     <label>Filter by Business Unit</label><br>
-    <select id="buFilter" multiple size="5"></select><br> <button id="clearBU">Clear Business Unit</button>
+    <select id="buFilter" multiple size="5"></select><br> <button class="so-btn" id="clearBU">Clear Business Unit</button>
 
-    <button id="clearFilters">Clear All Filters</button><br>
+    <button class="so-btn" id="clearFilters">Clear All Filters</button><br>
     <hr><br>
 
     <label>Additional Addresses</label>
@@ -220,8 +194,8 @@
 
 
     <hr><br>
-    <button id="revertMap">Revert to Base Map</button>
-    <button id="exportMap">Export Map as PNG</button>
+    <button class="so-btn" id="revertMap">Revert to Base Map</button>
+    <button class="so-btn" id="exportMap">Export Map as PNG</button>
   </div>
 
   <!-- Map Container -->
@@ -657,6 +631,7 @@ buttons.style.pointerEvents = "auto";
 function makeButton(text) {
   const btn = document.createElement('button');
   btn.textContent = text;
+  btn.className = 'so-btn so-btn--inline'; 
   return btn;
 }
 
@@ -740,6 +715,7 @@ confirmBtn.onclick = () => {
   </script>
 </body>
 </html>
+
 
 
 
