@@ -526,25 +526,25 @@ document.getElementById('exportMap').addEventListener('click', () => {
   box.style.pointerEvents = "none";
   overlay.appendChild(box);
 
-// Crosshairs (short, subtle, centered inside the box)
+// Crosshairs (short ticks, centered)
 const horiz = document.createElement('div');
 horiz.style.position = "absolute";
 horiz.style.top = "50%";
-horiz.style.left = "30%";
-horiz.style.width = "20%";     // span 20% of box width
-horiz.style.height = "0.5px";
+horiz.style.left = "50%";
+horiz.style.width = "30px";       // ✅ short, 30px
+horiz.style.height = "1px";
 horiz.style.background = "#999";
-horiz.style.transform = "translateY(-50%)";
+horiz.style.transform = "translate(-50%, -50%)";
 box.appendChild(horiz);
 
 const vert = document.createElement('div');
 vert.style.position = "absolute";
+vert.style.top = "50%";
 vert.style.left = "50%";
-vert.style.top = "30%";
-vert.style.height = "20%";     // span 20% of box height
-vert.style.width = "0.5px";
+vert.style.height = "30px";       // ✅ short, 30px
+vert.style.width = "1px";
 vert.style.background = "#999";
-vert.style.transform = "translateX(-50%)";
+vert.style.transform = "translate(-50%, -50%)";
 box.appendChild(vert);
 
 
@@ -661,6 +661,7 @@ confirmBtn.onclick = () => {
   </script>
 </body>
 </html>
+
 
 
 
