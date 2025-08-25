@@ -89,38 +89,6 @@
 
  #color-picker { margin: 0px 0; }
 
-/* Fix Pickr button (remove border + shadow, force square, align top) */
-#color-picker .pcr-button {
-  width: 28px !important;
-  height: 28px !important;
-  border: none !important;
-  box-shadow: none !important;
-  border-radius: 4px !important; /* or 0 if you want sharp corners */
-  padding: 0 !important;
-  margin: 0 !important;
-  background-clip: padding-box !important;
-}
-
-/* Kill Pickr's pesky ::after overlay that adds border */
-#color-picker .pcr-button::after {
-  border: none !important;
-  box-shadow: none !important;
-  background: transparent !important;
-}
-
-/* Make sure it's aligned to the top with the label */
-.color-picker-row {
-  display: flex;
-  align-items: flex-start; /* ✅ aligns top edges */
-  gap: 10px;
-}
-
-.color-picker-row label {
-  margin-top: 2px; /* fine-tune alignment */
-  line-height: 1.2;
-}
-
-
 /* Style the default "Choose File" button */
 input[type="file"]::file-selector-button {
   font-size: 9px;
@@ -139,6 +107,39 @@ input[type="file"]::file-selector-button:hover {
   background: #009de0;
   color: #fff;
 }
+
+	/* --- Fix Pickr swatch completely --- */
+#color-picker .pcr-button {
+  width: 28px !important;
+  height: 28px !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 4px !important;   /* or 0 if you want sharp corners */
+  padding: 0 !important;
+  margin: 0 !important;
+  background-clip: padding-box !important;
+  align-self: flex-start;          /* align with top of label */
+}
+
+/* Kill the theme’s fake border/shadow layers */
+#color-picker .pcr-button::before,
+#color-picker .pcr-button::after {
+  border: none !important;
+  box-shadow: none !important;
+  background: none !important;
+}
+
+	.color-picker-row {
+  display: flex;
+  align-items: flex-start; /* align tops */
+  gap: 10px;
+}
+
+.color-picker-row label {
+  margin-top: 2px; /* small tweak if the text still looks off */
+  line-height: 1.2;
+}
+
 
 
 </style>
@@ -700,6 +701,7 @@ confirmBtn.onclick = () => {
   </script>
 </body>
 </html>
+
 
 
 
