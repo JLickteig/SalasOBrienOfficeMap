@@ -62,7 +62,7 @@
 button {
   display: block;
   width: 100%;          /* ✅ same width as filter selects */
-  margin: 2px 0;
+  margin: 6px 0;
   padding: 10px;
   font-size: 14px;
   font-weight: bold;
@@ -92,11 +92,12 @@ button:hover {
     align-items: flex-start;
     gap: 10px;
   }
-  #color-picker {
-    height: 28px;
-    width: 28px;
-    flex-shrink: 0;
-  }
+#color-picker {
+  width: 28px;
+  aspect-ratio: 1 / 1;   /* ✅ forces a square */
+  flex-shrink: 0;
+}
+
   .color-picker-row label {
     display: flex;
     flex-direction: column;
@@ -684,6 +685,7 @@ confirmBtn.onclick = () => {
   </script>
 </body>
 </html>
+
 
 
 
