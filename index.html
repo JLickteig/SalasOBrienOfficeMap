@@ -26,7 +26,7 @@
     top: 10px;
     left: 10px;
     background: #fff;
-    padding: 10px;
+    padding: 5px;
     border-radius: 4px;
     z-index: 1;
     max-width: 260px;
@@ -85,30 +85,26 @@ button:hover {
     font-size: 13px;
   }
 
-/* Force the Pickr button + container to stay a perfect square */
-#color-picker,
+/* Force Pickr trigger button to be a perfect square */
 #color-picker .pcr-button {
   width: 28px !important;
   height: 28px !important;
   aspect-ratio: 1 / 1 !important;
-  margin: 5px 0;          /* keep your margin */
+  border-radius: 4px !important;   /* remove the rounded pill */
+  padding: 0 !important;           /* remove built-in padding */
+  margin: 0 !important;
   box-sizing: border-box;
-  flex-shrink: 0;
 }
 
-/* Color picker row */
+/* Make sure the row aligns top-to-top */
 .color-picker-row {
   display: flex;
-  align-items: flex-start; /* align text to top of square */
+  align-items: flex-start; /* aligns top edges */
   gap: 10px;
 }
-
 .color-picker-row label {
-  display: flex;
-  flex-direction: column;
   line-height: 1.2;
 }
-
 
 /* Style the default "Choose File" button */
 input[type="file"]::file-selector-button {
@@ -690,6 +686,7 @@ confirmBtn.onclick = () => {
   </script>
 </body>
 </html>
+
 
 
 
