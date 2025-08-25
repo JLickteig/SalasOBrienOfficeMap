@@ -87,25 +87,28 @@
     font-size: 13px;
   }
 
- #color-picker { margin: 5px 0; }
+ #color-picker { margin: 0px 0; }
 
-  /* Color picker row */
-  .color-picker-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-  }
-  #color-picker {
-    height: 28px;
-    width: 28px;
-    flex-shrink: 0;
-  }
-  .color-picker-row label {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.2;
-  }
-	
+  /* Kill Pickr default border/shadow completely */
+#color-picker .pcr-button,
+#color-picker .pcr-button::after {
+  width: 28px !important;
+  height: 28px !important;
+  border: none !important;       /* ✅ no border */
+  box-shadow: none !important;   /* ✅ no shadow */
+  background-clip: content-box !important;
+  border-radius: 4px !important; /* optional */
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Align the swatch square to the label top */
+.color-picker-row {
+  display: flex;
+  align-items: flex-start;  /* ✅ aligns tops */
+  gap: 10px;
+}
+
 /* Style the default "Choose File" button */
 input[type="file"]::file-selector-button {
   font-size: 9px;
@@ -696,3 +699,4 @@ confirmBtn.onclick = () => {
   </script>
 </body>
 </html>
+
