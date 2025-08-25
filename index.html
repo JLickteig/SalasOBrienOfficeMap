@@ -162,6 +162,14 @@
 <body>
   <!-- Sidebar Filters -->
   <div id="filters">
+	    <!-- ★ CHANGED: Added the toggle control -->
+    <div style="display:flex; align-items:center; gap:8px; margin-top:8px;"> <!-- ★ CHANGED -->
+      <input type="checkbox" id="haloToggle">                                 <!-- ★ CHANGED -->
+      <label for="haloToggle" style="margin:0; font-weight:normal;">Show driving distance (3 hours)</label> <!-- ★ CHANGED -->
+    </div> <!-- ★ CHANGED -->
+
+	  <br>
+
     <label>Filter by State/Province</label>
     <span class="subhead">(hold Ctrl + click to select multiple states/provinces)</span>
     <select id="regionFilter" multiple size="10"></select><br><button class="so-btn" id="clearRegion">Clear State/Province</button><br>
@@ -191,15 +199,6 @@
 </div>
 <br>
 	  
-  <!-- ★ CHANGED: Added the toggle control -->
-    <div style="display:flex; align-items:center; gap:8px; margin-top:8px;"> <!-- ★ CHANGED -->
-      <input type="checkbox" id="haloToggle">                                 <!-- ★ CHANGED -->
-      <label for="haloToggle" style="margin:0; font-weight:normal;">Show driving distances</label> <!-- ★ CHANGED -->
-    </div> <!-- ★ CHANGED -->
-
-	  <br>
-
-
 
     <hr><br>
     <button class="so-btn" id="revertMap">Revert to Base Map</button>
@@ -249,7 +248,7 @@ map.on('load', () => {
     let currentMarkerColor = "#000086"; // default color
 
 	   // ★ CHANGED: Halo constants and helper functions
-    const HALO_MULTIPLIER = 5;             // ★ CHANGED
+    const HALO_MULTIPLIER = 10;             // ★ CHANGED
     const BASE_RADIUS = 6;                 // ★ CHANGED
     const OFFICES_LAYER_ID = 'offices-layer';   // ★ CHANGED
     const OFFICES_HALO_ID  = 'offices-halo';    // ★ CHANGED
@@ -265,7 +264,7 @@ map.on('load', () => {
           paint: {
             'circle-radius': BASE_RADIUS * HALO_MULTIPLIER,
             'circle-color': '#009de0',
-            'circle-opacity': 0.2
+            'circle-opacity': 0.1
           }
         }, OFFICES_LAYER_ID); // insert below the main dots
       }
@@ -286,6 +285,8 @@ map.on('load', () => {
             'circle-radius': BASE_RADIUS * HALO_MULTIPLIER,
             'circle-color': currentMarkerColor,
             'circle-opacity': 0.2
+			  'circle-pitch-scale': 'viewport'
+
           }
         }, uploadedLayerId); // insert below uploaded dots
       }
@@ -798,6 +799,7 @@ confirmBtn.onclick = () => {
   </script>
 </body>
 </html>
+
 
 
 
