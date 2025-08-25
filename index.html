@@ -85,24 +85,29 @@ button:hover {
     font-size: 13px;
   }
 
+/* Color picker row */
+.color-picker-row {
+  display: flex;
+  align-items: flex-start; /* align with the top of the label */
+  gap: 10px;
+}
+
 /* Force Pickr trigger button to be a perfect square */
 #color-picker .pcr-button {
   width: 28px !important;
   height: 28px !important;
   aspect-ratio: 1 / 1 !important;
-  border-radius: 4px !important;   /* remove the rounded pill */
-  padding: 0 !important;           /* remove built-in padding */
+  border-radius: 4px !important;
+  padding: 0 !important;
   margin: 0 !important;
   box-sizing: border-box;
+  flex-shrink: 0;
+  align-self: flex-start; /* ✅ ensures it aligns with label top */
 }
 
-/* Make sure the row aligns top-to-top */
-.color-picker-row {
-  display: flex;
-  align-items: flex-start; /* aligns top edges */
-  gap: 10px;
-}
 .color-picker-row label {
+  display: flex;
+  flex-direction: column;
   line-height: 1.2;
 }
 
@@ -136,7 +141,7 @@ input[type="file"]::file-selector-button:hover {
   <div id="filters">
     <label>Filter by State/Province</label>
     <span class="subhead">(hold Ctrl + click to select multiple states/provinces)</span>
-    <select id="regionFilter" multiple size="10"></select><br><button id="clearRegion">Clear State/Province</button><br><br>
+    <select id="regionFilter" multiple size="10"></select><br><button id="clearRegion">Clear State/Province</button><br>
 
     <label>Filter by Business Unit</label><br>
     <select id="buFilter" multiple size="5"></select><br> <button id="clearBU">Clear Business Unit</button>
@@ -686,6 +691,7 @@ confirmBtn.onclick = () => {
   </script>
 </body>
 </html>
+
 
 
 
