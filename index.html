@@ -33,6 +33,18 @@
     transform-origin: top left; /* scale relative to top-left corner */
   }
 
+	/* Sidebar buttons (stay full width) */
+#filters button {
+  width: 100%;
+}
+
+/* Overlay buttons (auto width, pill style) */
+.export-overlay button {
+  width: auto;
+  padding: 10px 24px;
+}
+
+
   /* Typography */
   label { font-weight: bold; margin-bottom: 6px; font-size: 14px; }
   .subhead { font-weight: normal; font-size: 12px; display: block; margin-top: 2px; }
@@ -517,8 +529,8 @@ document.getElementById('exportMap').addEventListener('click', () => {
   const horiz = document.createElement('div');
   horiz.style.position = "absolute";
   horiz.style.top = "50%";
-  horiz.style.left = "25";
-  horiz.style.width = "15%";
+  horiz.style.left = "25%";
+  horiz.style.width = "25%";
   horiz.style.height = "0.5px";
   horiz.style.background = "#999";
   horiz.style.transform = "translateY(-50%)";
@@ -529,7 +541,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   vert.style.top = "25%";
   vert.style.left = "50%";
   vert.style.width = "0.5px";
-  vert.style.height = "15%";
+  vert.style.height = "25%";
   vert.style.background = "#999";
   vert.style.transform = "translateX(-50%)";
   box.appendChild(vert);
@@ -652,6 +664,7 @@ document.body.appendChild(overlay);
   </script>
 </body>
 </html>
+
 
 
 
