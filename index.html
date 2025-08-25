@@ -9,7 +9,7 @@
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
 
-  <!-- html2canvas for export -->
+  <!-- html2canvas for export (used to capture legend into PNG) -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
   <!-- Pickr (Color Picker) -->
@@ -167,9 +167,35 @@
     /* Pickr reset in compact rows */
     .pickr { margin-right: 8px; }
 
-    /* Mapbox popup tweaks */
-    .mapboxgl-popup { font-size: 13px; }
-    .mapboxgl-popup-content { white-space: pre-line; min-width: max-content; max-width: 400px; }
+    /* Map legend (printed too) */
+    .map-legend {
+      position: absolute;
+      left: 14px;
+      bottom: 14px;
+      background: rgba(255,255,255,0.96);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      padding: 10px 12px;
+      z-index: 4; /* under the panel (z=5) so panel stays above in UI, but captured in export */
+      min-width: 180px;
+    }
+    .map-legend h4 {
+      margin: 0 0 8px 0;
+      font-size: 13px;
+      font-weight: 700;
+      color: #111;
+    }
+    .legend-item {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; color: #222;
+      margin: 4px 0;
+    }
+    .legend-swatch {
+      width: 14px; height: 14px; border-radius: 3px; border: 1px solid #999;
+      display: inline-block;
+      flex: 0 0 14px;
+    }
   </style>
 </head>
 <body>
@@ -240,7 +266,7 @@
       <div id="uploadLayers"></div>
 
       <button class="so-btn" id="addLayerBtn" type="button">+ Add Layer</button>
-      <div class="muted" style="margin-top:6px;">Up to 3 additional layers. Each has its own color & CSV upload.</div>
+      <div class="muted" style="margin-top:6px;">Up to 3 additional layers. Each has its own color, name & CSV upload.</div>
     </div>
 
     <!-- Tools -->
@@ -256,6 +282,12 @@
   <!-- Map -->
   <div id="map"></div>
 
+  <!-- Legend (printed) -->
+  <div id="legend" class="map-legend" aria-label="Legend">
+    <h4>Legend</h4>
+    <div id="legendItems"></div>
+  </div>
+
   <!-- CSV parser -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 
@@ -266,7 +298,7 @@
 
     // Isochrone settings
     const ISOCHRONE_MINUTES = 180;
-    const ISOCHRONE_PROFILE = 'driving'; // or 'driving-traffic' (if plan allows)
+    const ISOCHRONE_PROFILE = 'driving';
     const isoCache = new Map();
 
     // Map init
@@ -284,14 +316,14 @@
     const OFFICE_SOURCE = 'offices';
     const OFFICE_LAYER = 'offices-layer';
 
-    // Halo sources (one for offices, one union across all upload layers)
+    // Halo sources (one for offices, one union across uploads)
     const HALO_OFFICES_SOURCE = 'halo-offices';
-    const HALO_UPLOADS_SOURCE = 'halo-uploads'; // union of up to 3 upload layers (dissolved per layer and then merged)
+    const HALO_UPLOADS_SOURCE = 'halo-uploads';
 
     // Upload layers state
     const MAX_LAYERS = 3;
     let layerCount = 0;
-    const uploadLayers = []; // array of {id, name, color, pickr, sourceId, circleLayerId, haloSourceId}
+    const uploadLayers = []; // array of {id, nameInputId, sourceId, circleLayerId, pickr, visible}
 
     // Accordion behavior
     document.querySelectorAll('.accordion-header').forEach(h => {
@@ -315,11 +347,9 @@
       if (!map.isStyleLoaded()) return;
 
       if (!enabled) {
-        // clear both halo sources
         setHaloData(HALO_OFFICES_SOURCE, emptyFC());
         setHaloData(HALO_UPLOADS_SOURCE, emptyFC());
       } else {
-        // rebuild halos based on current data
         rebuildOfficeHalos();
         rebuildUploadsHalos();
       }
@@ -363,7 +393,6 @@
         isoCache.set(key, poly);
         return poly;
       } catch (err) {
-        // fallback ~180 miles ≈ 289.7 km
         const circle = turf.circle([lng, lat], 289.7, { steps: 128, units: 'kilometers' });
         isoCache.set(key, circle);
         return circle;
@@ -394,447 +423,7 @@
       return merged ? { type: 'FeatureCollection', features: [merged] } : emptyFC();
     }
 
-    // Map load
-    map.on('load', async () => {
-      try {
-        // base data
-        const datasetUrl = 'https://api.mapbox.com/datasets/v1/jacquelickteig/cmehl5mrh2qmv1nkae937qkrh/features?access_token=' + mapboxgl.accessToken;
-        const res = await fetch(datasetUrl);
-        originalGeojson = await res.json();
-
-        // offices points
-        map.addSource(OFFICE_SOURCE, { type: 'geojson', data: originalGeojson });
-        map.addLayer({
-          id: OFFICE_LAYER,
-          type: 'circle',
-          source: OFFICE_SOURCE,
-          paint: { 'circle-radius': 6, 'circle-color': '#009de0' }
-        });
-
-        // halo layers (no borders)
-        ensureFillLayer(HALO_OFFICES_SOURCE, 'halo-offices-fill', '#009de0', OFFICE_LAYER);
-        ensureFillLayer(HALO_UPLOADS_SOURCE, 'halo-uploads-fill', '#000', OFFICE_LAYER); // color overridden dynamically (not visible by itself)
-
-        // build filters
-        buildFilters(originalGeojson);
-
-        // popups for offices
-        wireOfficePopups();
-
-        // reach initial state
-        setReach(false);
-
-      } catch (e) {
-        console.error('Error loading dataset:', e);
-      }
-    });
-
-    // Filters
-    function buildFilters(gj) {
-      const regionSelect = document.getElementById('regionFilter');
-      const buSelect = document.getElementById('buFilter');
-
-      // clear
-      regionSelect.innerHTML = '';
-      buSelect.innerHTML = '';
-
-      const states = [...new Set(gj.features.filter(f => f.properties.country === 'US').map(f => f.properties.state).filter(Boolean))].sort();
-      const provinces = [...new Set(gj.features.filter(f => f.properties.country === 'CAN').map(f => f.properties.state).filter(Boolean))].sort();
-      const bus = [...new Set(gj.features.map(f => f.properties.bu).filter(Boolean))].sort();
-
-      const caGroup = document.createElement('optgroup');
-      caGroup.label = 'Canada';
-      provinces.forEach(p => { const o = document.createElement('option'); o.value = 'CAN|'+p; o.textContent = p; caGroup.appendChild(o); });
-
-      const usGroup = document.createElement('optgroup');
-      usGroup.label = 'United States';
-      states.forEach(s => { const o = document.createElement('option'); o.value = 'US|'+s; o.textContent = s; usGroup.appendChild(o); });
-
-      regionSelect.appendChild(caGroup);
-      regionSelect.appendChild(usGroup);
-
-      bus.forEach(b => { const o = document.createElement('option'); o.value = b; o.textContent = b; buSelect.appendChild(o); });
-
-      function getSelected(select) { return Array.from(select.selectedOptions).map(o => o.value); }
-
-      async function applyFilters() {
-        const regions = getSelected(regionSelect);
-        const busSel = getSelected(buSelect);
-        const filtered = {
-          type: 'FeatureCollection',
-          features: originalGeojson.features.filter(f => {
-            const props = f.properties;
-            let ok = true;
-            if (regions.length) {
-              const code = props.country + '|' + props.state;
-              if (!regions.includes(code)) ok = false;
-            }
-            if (busSel.length && !busSel.includes(props.bu)) ok = false;
-            return ok;
-          })
-        };
-        map.getSource(OFFICE_SOURCE).setData(filtered);
-
-        if (reachEnabled) await rebuildOfficeHalos(filtered);
-      }
-
-      document.getElementById('clearRegion').addEventListener('click', () => { regionSelect.selectedIndex = -1; applyFilters(); });
-      document.getElementById('clearBU').addEventListener('click', () => { buSelect.selectedIndex = -1; applyFilters(); });
-      document.getElementById('clearFilters').addEventListener('click', () => {
-        regionSelect.selectedIndex = -1; buSelect.selectedIndex = -1;
-        map.getSource(OFFICE_SOURCE).setData(originalGeojson);
-        if (reachEnabled) rebuildOfficeHalos(originalGeojson);
-      });
-
-      regionSelect.addEventListener('change', applyFilters);
-      buSelect.addEventListener('change', applyFilters);
-    }
-
-    // Office popups
-    function wireOfficePopups() {
-      const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
-      map.on('mouseenter', OFFICE_LAYER, (e) => {
-        map.getCanvas().style.cursor = 'pointer';
-        const props = e.features[0].properties;
-        popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
-          `<div style="line-height:1;">
-            <div style="font-weight:bold; color:#009DE0; margin:0;">${props.officeName || ''}</div>
-            <div style="font-size:11px; color:#333; margin:0;">${props.address || ''}</div>
-            <div style="font-size:11px; color:#666; margin:0;">${props.phone || ''}</div>
-            <div style="font-size:11px; color:#666; margin:0;">${props.bu || ''}</div>
-           </div>`
-        ).addTo(map);
-      });
-      map.on('mouseleave', OFFICE_LAYER, () => { map.getCanvas().style.cursor = ''; popup.remove(); });
-    }
-
-    // Rebuild office halos (filtered or full)
-    async function rebuildOfficeHalos(sourceData) {
-      if (!reachEnabled) return;
-      const data = sourceData || map.getSource(OFFICE_SOURCE)._data;
-      const pts = data.features.filter(f => f.geometry?.type === 'Point');
-      const fc = await buildIsochronesForPoints(pts);
-      const dissolved = dissolvePolygons(fc);
-      setHaloData(HALO_OFFICES_SOURCE, dissolved);
-    }
-
-    // Rebuild Upload halos (union across up to 3 layers)
-    async function rebuildUploadsHalos() {
-      if (!reachEnabled) return;
-      // build dissolved per layer then union them together
-      const perLayer = [];
-      for (const l of uploadLayers) {
-        if (!map.getSource(l.sourceId)) continue;
-        const data = map.getSource(l.sourceId)._data;
-        if (!data?.features?.length) continue;
-        const pts = data.features.filter(f => f.geometry?.type === 'Point');
-        if (!pts.length) continue;
-        const fc = await buildIsochronesForPoints(pts);
-        perLayer.push(dissolvePolygons(fc));
-      }
-      // union all dissolved layers into one FC (to keep 0.1 opacity)
-      let unioned = emptyFC();
-      if (perLayer.length === 1) {
-        unioned = perLayer[0];
-      } else if (perLayer.length > 1) {
-        let merged = perLayer[0].features[0];
-        for (let i=1;i<perLayer.length;i++){
-          try { merged = turf.union(merged, perLayer[i].features[0]); }
-          catch(e){ console.warn('layer union failed', e); }
-        }
-        unioned = merged ? { type:'FeatureCollection', features:[merged] } : emptyFC();
-      }
-      setHaloData(HALO_UPLOADS_SOURCE, unioned);
-    }
-
-    // ===== Layers UI =====
-    const uploadLayersContainer = document.getElementById('uploadLayers');
-    const addLayerBtn = document.getElementById('addLayerBtn');
-
-    addLayerBtn.addEventListener('click', () => {
-      if (layerCount >= MAX_LAYERS) return;
-      addUploadLayer();
-      if (layerCount >= MAX_LAYERS) addLayerBtn.disabled = true;
-    });
-
-    function addUploadLayer() {
-      const index = ++layerCount;
-      const layerId = `uploaded-layer-${index}`;
-      const haloSourceId = `halo-source-${index}`;
-      const circleLayerId = `uploaded-circle-${index}`;
-      const defaultColor = randomBrandishColor(index);
-
-      // UI Card
-      const card = document.createElement('div');
-      card.className = 'layer-card';
-      card.id = `card-${layerId}`;
-      card.innerHTML = `
-        <div class="layer-header">
-          <div class="layer-meta">
-            <span class="chip" id="chip-${layerId}" style="background:${defaultColor};"></span>
-            <input type="text" id="name-${layerId}" value="Layer ${index}" style="border:1px solid #e5e7eb; border-radius:8px; padding:6px 8px; width:150px;">
-          </div>
-          <div class="layer-actions">
-            <button class="icon-btn" id="toggle-${layerId}" title="Toggle visibility">👁</button>
-            <button class="icon-btn" id="remove-${layerId}" title="Remove layer">✕</button>
-          </div>
-        </div>
-        <div class="layer-body">
-          <div style="display:flex; align-items:center; gap:10px;">
-            <div id="picker-${layerId}"></div>
-            <label class="muted">Marker Color</label>
-          </div>
-          <input type="file" id="file-${layerId}" accept=".csv">
-        </div>
-      `;
-      uploadLayersContainer.appendChild(card);
-
-      // Map source & layer
-      map.addSource(layerId, { type:'geojson', data: emptyFC() });
-      map.addLayer({
-        id: circleLayerId,
-        type: 'circle',
-        source: layerId,
-        paint: { 'circle-radius': 6, 'circle-color': defaultColor }
-      });
-
-      // Ensure global uploads halo fill exists (already ensured on load)
-      // We just change color dynamically to average or latest; simplest: keep halo-uploads fill dark and rely on opacity.
-
-      // Color picker
-      const pickr = Pickr.create({
-        el: `#picker-${layerId}`,
-        theme: 'classic',
-        default: defaultColor,
-        components: {
-          preview: true,
-          opacity: false,
-          hue: true,
-          interaction: { hex: true, input: true }
-        }
-      });
-      pickr.on('change', (color) => {
-        const hex = color.toHEXA().toString();
-        document.getElementById(`chip-${layerId}`).style.background = hex;
-        map.setPaintProperty(circleLayerId, 'circle-color', hex);
-        // Rewrite color on features for popups
-        const src = map.getSource(layerId);
-        if (src) {
-          const data = src._data;
-          data.features.forEach(f => f.properties.color = hex);
-          src.setData(data);
-        }
-      });
-
-      // Visibility toggle
-      let visible = true;
-      document.getElementById(`toggle-${layerId}`).addEventListener('click', async () => {
-        visible = !visible;
-        map.setLayoutProperty(circleLayerId, 'visibility', visible ? 'visible' : 'none');
-        // rebuild upload halos (we union across *visible* layers only)
-        await rebuildUploadsHalos();
-      });
-
-      // Remove layer
-      document.getElementById(`remove-${layerId}`).addEventListener('click', async () => {
-        // remove UI
-        card.remove();
-        // remove map things
-        if (map.getLayer(circleLayerId)) map.removeLayer(circleLayerId);
-        if (map.getSource(layerId)) map.removeSource(layerId);
-        // remove from registry
-        const idx = uploadLayers.findIndex(l => l.id === layerId);
-        if (idx >= 0) uploadLayers.splice(idx, 1);
-        layerCount--;
-        addLayerBtn.disabled = false;
-        // rebuild halos
-        await rebuildUploadsHalos();
-      });
-
-      // File upload
-      const fileInput = document.getElementById(`file-${layerId}`);
-      const statusEl = document.getElementById('uploadStatus');
-      fileInput.addEventListener('change', (e) => handleCSVUpload(e, layerId, pickr, statusEl));
-
-      // Track
-      uploadLayers.push({
-        id: layerId,
-        sourceId: layerId,
-        circleLayerId,
-        haloSourceId,
-        nameInputId: `name-${layerId}`,
-        pickr,
-        get color() { return pickr.getColor().toHEXA().toString(); },
-        get visible() { return visible; }
-      });
-    }
-
-    // Handle CSV for a given layer
-    function handleCSVUpload(event, layerId, pickr, statusEl) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      statusEl.textContent = "Uploading...";
-      Papa.parse(file, {
-        header: true,
-        complete: async function(results) {
-          const features = [];
-          const color = pickr.getColor().toHEXA().toString();
-
-          for (const row of results.data) {
-            let lat = parseFloat(row.Latitude);
-            let lng = parseFloat(row.Longitude);
-
-            if ((!lat || !lng) && row.ADDRESS) {
-              try {
-                const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(row.ADDRESS)}&key=${GOOGLE_MAPS_KEY}`);
-                const data = await response.json();
-                if (data.status === "OK") {
-                  lat = data.results[0].geometry.location.lat;
-                  lng = data.results[0].geometry.location.lng;
-                }
-              } catch (err) {
-                console.error("Geocoding failed for:", row.ADDRESS, err);
-              }
-            }
-
-            if (isFinite(lat) && isFinite(lng)) {
-              features.push({
-                type: "Feature",
-                geometry: { type: "Point", coordinates: [lng, lat] },
-                properties: {
-                  officeName: row["LABEL"] || row["Label"] || "",
-                  address: row.ADDRESS || "",
-                  state: row["STATE / PROVINCE"] || "",
-                  color
-                }
-              });
-            }
-          }
-
-          if (features.length > 0) {
-            statusEl.textContent = `✅ ${features.length} locations added to ${document.getElementById(`name-${layerId}`).value}.`;
-          } else {
-            statusEl.textContent = "⚠️ No valid locations found in the file.";
-          }
-
-          const uploadedGeojson = { type:"FeatureCollection", features };
-          const src = map.getSource(layerId);
-          if (src) src.setData(uploadedGeojson);
-
-          // Rebuild halos if needed
-          if (reachEnabled && features.length) {
-            await rebuildUploadsHalos();
-          }
-
-          // Popups for this layer
-          wireUploadLayerPopups(layerId);
-        },
-        error: function(err) {
-          statusEl.textContent = "❌ Upload failed: " + err.message;
-        }
-      });
-    }
-
-    function wireUploadLayerPopups(layerId) {
-      const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
-      map.on('mouseenter', `uploaded-circle-${layerId.split('-').pop()}`, (e) => {
-        map.getCanvas().style.cursor = 'pointer';
-        const props = e.features[0].properties;
-        popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
-          `<span style="font-weight:bold; color:${props.color || '#009DE0'};">${props.officeName || '(No LABEL)'}</span><br>${props.address || ''}`
-        ).addTo(map);
-      });
-      map.on('mouseleave', `uploaded-circle-${layerId.split('-').pop()}`, () => { map.getCanvas().style.cursor = ''; popup.remove(); });
-    }
-
-    // ===== Export =====
-    document.getElementById('exportMap').addEventListener('click', () => {
-      const panel = document.getElementById('panel');
-      const controls = document.querySelectorAll('.mapboxgl-ctrl');
-
-      // Hide UI
-      panel.style.display = 'none';
-      controls.forEach(c => c.style.display = 'none');
-      map.resize();
-
-      // Overlay / crop (4:3)
-      const overlay = document.createElement('div');
-      overlay.style.cssText = "position:fixed; inset:0; z-index:9999; pointer-events:none;";
-      const box = document.createElement('div');
-      Object.assign(box.style, {
-        position: "absolute", top: "50%", left: "50%", width: "80%", aspectRatio: "4/3",
-        transform: "translate(-50%, -50%)", border: "2px dashed #666", pointerEvents: "none"
-      });
-      overlay.appendChild(box);
-
-      const label = document.createElement('div');
-      label.textContent = "Use your mouse scroll wheel to adjust size. Click, hold, and move to adjust placement.";
-      Object.assign(label.style, {
-        position: "absolute", top: "15px", left: "50%", transform: "translateX(-50%)",
-        fontSize: "14px", color: "#fff", background: "rgba(0,0,0,0.6)",
-        padding: "6px 12px", borderRadius: "4px"
-      });
-      overlay.appendChild(label);
-
-      const buttons = document.createElement('div');
-      Object.assign(buttons.style, {
-        position: "absolute", bottom: "20px", right: "20px", display: "flex", gap: "12px",
-        pointerEvents: "auto"
-      });
-      function makeBtn(txt){ const b=document.createElement('button'); b.textContent=txt; b.className='so-btn'; b.style.width='auto'; return b; }
-      const confirmBtn = makeBtn("Confirm Export");
-      const cancelBtn = makeBtn("Cancel");
-      buttons.appendChild(confirmBtn); buttons.appendChild(cancelBtn);
-      overlay.appendChild(buttons);
-      document.body.appendChild(overlay);
-
-      confirmBtn.onclick = () => {
-        const exportCanvas = document.createElement('canvas');
-        exportCanvas.width = 2048; exportCanvas.height = 1536;
-        const ctx = exportCanvas.getContext('2d');
-        const mapCanvas = map.getCanvas();
-
-        const boxRect = box.getBoundingClientRect();
-        const mapRect = mapCanvas.getBoundingClientRect();
-
-        const sx = (boxRect.left - mapRect.left) * (mapCanvas.width / mapRect.width);
-        const sy = (boxRect.top - mapRect.top) * (mapCanvas.height / mapRect.height);
-        const sw = boxRect.width * (mapCanvas.width / mapRect.width);
-        const sh = boxRect.height * (mapCanvas.height / mapRect.height);
-
-        ctx.drawImage(mapCanvas, sx, sy, sw, sh, 0, 0, exportCanvas.width, exportCanvas.height);
-        const img = exportCanvas.toDataURL("image/png");
-        const link = document.createElement('a');
-        link.href = img; link.download = "map-export-4x3.png"; link.click();
-        cleanup();
-      };
-      cancelBtn.onclick = () => cleanup();
-
-      function cleanup() {
-        document.body.removeChild(overlay);
-        panel.style.display = '';
-        controls.forEach(c => c.style.display = '');
-        map.resize();
-      }
-    });
-
-    // ===== Template CSV download =====
-    document.getElementById('downloadTemplate').addEventListener('click', async (e) => {
-      e.preventDefault();
-      const url = "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/refs/heads/main/MapAddressTemplate.csv";
-      try {
-        const response = await fetch(url);
-        const blob = await response.blob();
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = "MapAddressTemplate.csv";
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      } catch (err) {
-        console.error("Failed to download template:", err);
-      }
-    });
-
-  </script>
-</body>
-</html>
+    // Legend
+    function updateLegend() {
+      const itemsEl = document.getElementById('legendItems');
+      itemsEl.innerHTML = '';
