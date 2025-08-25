@@ -85,31 +85,36 @@ button:hover {
     font-size: 13px;
   }
 
-/* Color picker row */
+/* Row stays horizontal */
 .color-picker-row {
   display: flex;
-  align-items: flex-start; /* align with top of label */
+  align-items: flex-start;   /* ✅ centers swatch with label */
   gap: 10px;
 }
 
-/* Force the Pickr swatch button square */
+/* Pickr wrapper */
+#color-picker {
+  flex-shrink: 0;
+}
+
+/* Swatch button inside Pickr */
 #color-picker .pcr-button {
   width: 28px !important;
   height: 28px !important;
-  aspect-ratio: 1 / 1 !important;
-  flex-shrink: 0;
+  min-width: 28px !important;
+  min-height: 28px !important;
+  max-width: 28px !important;
+  max-height: 28px !important;
   border-radius: 4px !important;
   padding: 0 !important;
   margin: 0 !important;
-  display: inline-block !important;
+  box-sizing: border-box !important;
 }
 
-/* Keep label stacked nicely */
-.color-picker-row label {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start; /* aligns to the top */
-  line-height: 1.2;
+/* Kill Pickr’s pseudo-elements that mess with sizing */
+#color-picker .pcr-button::before,
+#color-picker .pcr-button::after {
+  display: none !important;
 }
 
 
@@ -693,6 +698,7 @@ confirmBtn.onclick = () => {
   </script>
 </body>
 </html>
+
 
 
 
