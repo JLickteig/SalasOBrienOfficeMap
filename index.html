@@ -196,7 +196,7 @@
     .legend-item { display: inline-flex; align-items: center; gap: 6px; }
     .legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid #999; display: inline-block; }
 
-    /* ---- NEW: ensure Pickr popup is above everything ---- */
+    /* Ensure Pickr popup floats above everything */
     .pcr-app { z-index: 9999; }
   </style>
 </head>
@@ -271,14 +271,15 @@
       <a href="#" id="downloadTemplate" class="muted">Download CSV template</a>
 
       <div class="muted" style="margin-top:6px;">Up to 3 additional layers. Each has its own color, name & CSV upload.</div>
+
+      <!-- Moved here: global upload status readout -->
+      <div id="uploadStatus" class="muted" style="margin-top:10px;"></div>
     </div>
 
-    <!-- Tools -->
+    <!-- Tools (header removed by request) -->
     <div class="panel-section">
-      <div class="section-title">Tools</div>
       <button class="so-btn" id="exportMap" type="button">Export Map as PNG</button>
       <button class="so-btn" id="revertMap" type="button" style="margin-top:8px;">Revert to Base Map</button>
-      <div id="uploadStatus" class="muted" style="margin-top:6px;"></div>
     </div>
   </aside>
 
@@ -317,7 +318,7 @@
     // Data state
     let originalGeojson = null;
     const OFFICE_SOURCE = 'offices';
-    let OFFICE_LAYER = 'offices-layer';
+    const OFFICE_LAYER = 'offices-layer';
     const HALO_OFFICES_SOURCE = 'halo-offices'; // offices-only halos
     const HALO_OFFICES_FILL = 'halo-offices-fill';
 
@@ -567,8 +568,9 @@
       for (const l of uploadLayers) {
         if (!l.visible) continue;
         const color = l.pickr.getColor().toHEXA().toString();
+        const normalized = normalizeHex(color);
         const name  = document.getElementById(l.nameInputId).value || 'Layer';
-        addLegendItem(itemsEl, color, name);
+        addLegendItem(itemsEl, normalized, name);
       }
     }
     function addLegendItem(container, color, name) {
@@ -592,6 +594,14 @@
     function paletteColor(seed) {
       const palette = ['#000086', '#16a34a', '#ea580c', '#2563eb', '#0ea5e9', '#f59e0b']; // first = #000086
       return palette[(seed - 1) % palette.length];
+    }
+
+    // Normalize Pickr output → 6-digit hex (#RRGGBB)
+    function normalizeHex(hex) {
+      if (!hex) return '#000000';
+      // '#RRGGBBAA' → '#RRGGBB'
+      if (hex.length === 9) return hex.slice(0, 7);
+      return hex;
     }
 
     function addUploadLayer() {
@@ -642,28 +652,29 @@
         el: `#picker-${layerId}`,
         theme: 'classic',
         default: defaultColor,
-        // Mount to body so popup is not clipped; button toggles open/close
-        container: document.body,
-        useAsButton: true,
+        container: document.body,     // avoid clipping
+        useAsButton: true,            // button toggles popup
         components: { preview: true, opacity: false, hue: true, interaction: { hex: true, input: true, save: true } }
       });
 
       // Ensure initial UI shows defaultColor and stays in sync
       pickr.on('init', () => {
-        pickr.setColor(defaultColor, true);
-        pickr.applyColor(true);
+        // Normalize and apply immediately to avoid any blank state
+        const hex = normalizeHex(pickr.getColor().toHEXA().toString() || defaultColor);
         const btn = document.querySelector(`#picker-${layerId} .pcr-button`);
-        if (btn) btn.style.background = defaultColor;
+        if (btn) btn.style.background = hex;
+        if (map.getLayer(circleLayerId)) map.setPaintProperty(circleLayerId, 'circle-color', hex);
       });
 
       function applyColorToLayer(hex) {
+        const normalized = normalizeHex(hex);
         const pickerButton = document.querySelector(`#picker-${layerId} .pcr-button`);
-        if (pickerButton) pickerButton.style.background = hex;
-        if (map.getLayer(circleLayerId)) map.setPaintProperty(circleLayerId, 'circle-color', hex);
+        if (pickerButton) pickerButton.style.background = normalized;
+        if (map.getLayer(circleLayerId)) map.setPaintProperty(circleLayerId, 'circle-color', normalized);
         const src = map.getSource(layerId);
         if (src && src._data) {
           const data = src._data;
-          (data.features || []).forEach(f => f.properties.color = hex);
+          (data.features || []).forEach(f => f.properties.color = normalized);
           src.setData(data);
         }
         updateLegend();
@@ -749,7 +760,7 @@
         header: true,
         complete: async function(results) {
           const features = [];
-          const color = pickr.getColor().toHEXA().toString();
+          const color = normalizeHex(pickr.getColor().toHEXA().toString());
 
           for (const row of results.data) {
             let lat = parseFloat(row.Latitude);
@@ -981,13 +992,13 @@
     const legendObserver = new MutationObserver(() => updateLegend());
     legendObserver.observe(document.getElementById('uploadLayers'), { childList: true, subtree: true });
 
-    // ---- NEW: prevent Mapbox from hijacking Pickr pointer events ----
+    // Prevent Mapbox from capturing pointer events that start inside Pickr
     ['pointerdown','mousedown','touchstart'].forEach(evt => {
       document.addEventListener(evt, (e) => {
         if (e.target.closest('.pcr-app') || e.target.closest('.pickr')) {
-          e.stopPropagation();
+          e.stopPropagation(); // capture so Mapbox never sees it
         }
-      }, true); // capture phase
+      }, true);
     });
   </script>
 </body>
