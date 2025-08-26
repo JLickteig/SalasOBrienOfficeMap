@@ -746,149 +746,179 @@
       map.on('mouseleave', circleId, () => { map.getCanvas().style.cursor = ''; popup.remove(); });
     }
 
-    // ===== Export (letterbox, no stretch, legend drawn, single click) =====
-    document.getElementById('exportMap').addEventListener('click', () => {
-      const panel = document.getElementById('panel');
-      const controls = document.querySelectorAll('.mapboxgl-ctrl');
+    // --- Helpers for safe rendering waits ---
+function waitForIdleOrTimeout(timeoutMs = 1200) {
+  return new Promise((resolve) => {
+    // If already fully rendered, continue immediately
+    if (map.loaded()) return resolve();
 
-      // Hide panel/Mapbox controls; keep legend visible
-      panel.style.display = 'none';
-      controls.forEach(c => c.style.display = 'none');
+    let resolved = false;
+    const onIdle = () => {
+      if (resolved) return;
+      resolved = true;
+      map.off('idle', onIdle);
+      resolve();
+    };
+
+    map.on('idle', onIdle);
+    setTimeout(() => {
+      if (resolved) return;
+      resolved = true;
+      map.off('idle', onIdle);
+      resolve(); // proceed even if idle never fired
+    }, timeoutMs);
+  });
+}
+function twoFrames() {
+  return new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+
+// ===== Export (letterbox, no stretch, legend drawn, single click, never stuck) =====
+document.getElementById('exportMap').addEventListener('click', () => {
+  const panel = document.getElementById('panel');
+  const controls = document.querySelectorAll('.mapboxgl-ctrl');
+
+  // Hide panel/Mapbox controls; keep legend visible
+  panel.style.display = 'none';
+  controls.forEach(c => c.style.display = 'none');
+  map.resize();
+
+  // Overlay / crop (4:3)
+  const overlay = document.createElement('div');
+  overlay.style.cssText = "position:fixed; inset:0; z-index:9999; pointer-events:none;";
+  const box = document.createElement('div');
+  Object.assign(box.style, {
+    position: "absolute", top: "50%", left: "50%", width: "80%", aspectRatio: "4/3",
+    transform: "translate(-50%, -50%)", border: "2px dashed #666",
+    pointerEvents: "none", boxSizing:'border-box'
+  });
+  overlay.appendChild(box);
+
+  const label = document.createElement('div');
+  label.textContent = "Use your mouse scroll wheel to adjust size. Click, hold, and move to adjust placement.";
+  Object.assign(label.style, {
+    position: "absolute", top: "15px", left: "50%", transform: "translateX(-50%)",
+    fontSize: "14px", color: "#fff", background: "rgba(0,0,0,0.6)",
+    padding: "6px 12px", borderRadius: "4px"
+  });
+  overlay.appendChild(label);
+
+  const buttons = document.createElement('div');
+  Object.assign(buttons.style, {
+    position: "absolute", bottom: "20px", right: "20px", display: "flex", gap: "12px",
+    pointerEvents: "auto"
+  });
+  function makeBtn(txt){ const b=document.createElement('button'); b.textContent=txt; b.className='so-btn'; b.style.width='auto'; return b; }
+  const confirmBtn = makeBtn("Confirm Export");
+  const cancelBtn = makeBtn("Cancel");
+  buttons.appendChild(confirmBtn); buttons.appendChild(cancelBtn);
+  overlay.appendChild(buttons);
+  document.body.appendChild(overlay);
+
+  let exporting = false;
+
+  confirmBtn.onclick = async () => {
+    if (exporting) return;
+    exporting = true;
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = "Exporting…";
+
+    try {
+      // Make sure we have a fresh paint; never wait forever
+      await waitForIdleOrTimeout(1200);
+      await twoFrames();
+
+      // Output canvas (fixed 4:3)
+      const OUT_W = 2048, OUT_H = 1536;
+      const exportCanvas = document.createElement('canvas');
+      exportCanvas.width = OUT_W; exportCanvas.height = OUT_H;
+      const ctx = exportCanvas.getContext('2d', { alpha: false });
+
+      // White background to fill any bands
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, OUT_W, OUT_H);
+
+      const mapCanvas = map.getCanvas();
+      const mapRect = mapCanvas.getBoundingClientRect();
+      const boxRect = box.getBoundingClientRect();
+
+      // Convert crop rect (CSS px) -> map canvas px, snap & clamp
+      const cx = mapCanvas.width  / mapRect.width;
+      const cy = mapCanvas.height / mapRect.height;
+
+      let sx = (boxRect.left - mapRect.left) * cx;
+      let sy = (boxRect.top  - mapRect.top)  * cy;
+      let sw = (boxRect.width)  * cx;
+      let sh = (boxRect.height) * cy;
+
+      // Snap to pixel & clamp
+      sx = Math.floor(sx); sy = Math.floor(sy);
+      let ex = Math.ceil(sx + sw), ey = Math.ceil(sy + sh);
+      const maxW = mapCanvas.width, maxH = mapCanvas.height;
+      sx = Math.max(0, Math.min(sx, maxW)); sy = Math.max(0, Math.min(sy, maxH));
+      ex = Math.max(0, Math.min(ex, maxW)); ey = Math.max(0, Math.min(ey, maxH));
+      sw = Math.max(1, ex - sx); sh = Math.max(1, ey - sy);
+
+      // Uniform scale to fit into OUT_W x OUT_H (letterbox; no stretch)
+      const scale = Math.min(OUT_W / sw, OUT_H / sh);
+      const dw = Math.round(sw * scale);
+      const dh = Math.round(sh * scale);
+      const dx0 = Math.round((OUT_W - dw) / 2);
+      const dy0 = Math.round((OUT_H - dh) / 2);
+
+      // Draw cropped map
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(mapCanvas, sx, sy, sw, sh, dx0, dy0, dw, dh);
+
+      // Legend capture & placement (same relative spot inside crop, then scaled + letterboxed)
+      const legendEl = document.getElementById('legend');
+      if (legendEl && legendEl.style.display !== 'none') {
+        const legendCanvas = await html2canvas(legendEl, { backgroundColor: null, scale: 2 });
+        const lr = legendEl.getBoundingClientRect();
+
+        let lmx = (lr.left - boxRect.left) * cx;
+        let lmy = (lr.top  - boxRect.top)  * cy;
+        let lmw = lr.width  * cx;
+        let lmh = lr.height * cy;
+
+        lmx = Math.round(lmx); lmy = Math.round(lmy);
+        lmw = Math.round(lmw); lmh = Math.round(lmh);
+
+        const dx = dx0 + Math.round(lmx * scale);
+        const dy = dy0 + Math.round(lmy * scale);
+        const dw2 = Math.max(1, Math.round(lmw * scale));
+        const dh2 = Math.max(1, Math.round(lmh * scale));
+
+        ctx.drawImage(legendCanvas, 0, 0, legendCanvas.width, legendCanvas.height, dx, dy, dw2, dh2);
+      }
+
+      const img = exportCanvas.toDataURL("image/png");
+      const link = document.createElement('a');
+      link.href = img; link.download = "map-export-4x3.png"; link.click();
+    } catch (err) {
+      console.error(err);
+      alert('Export failed. Please try again.');
+    } finally {
+      // Always restore UI
+      document.body.removeChild(overlay);
+      panel.style.display = '';
+      controls.forEach(c => c.style.display = '');
       map.resize();
 
-      // Overlay / crop (4:3)
-      const overlay = document.createElement('div');
-      overlay.style.cssText = "position:fixed; inset:0; z-index:9999; pointer-events:none;";
-      const box = document.createElement('div');
-      Object.assign(box.style, {
-        position: "absolute", top: "50%", left: "50%", width: "80%", aspectRatio: "4/3",
-        transform: "translate(-50%, -50%)", border: "2px dashed #666", pointerEvents: "none", boxSizing:'border-box'
-      });
-      overlay.appendChild(box);
+      exporting = false;
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = "Confirm Export";
+    }
+  };
 
-      const label = document.createElement('div');
-      label.textContent = "Use your mouse scroll wheel to adjust size. Click, hold, and move to adjust placement.";
-      Object.assign(label.style, {
-        position: "absolute", top: "15px", left: "50%", transform: "translateX(-50%)",
-        fontSize: "14px", color: "#fff", background: "rgba(0,0,0,0.6)",
-        padding: "6px 12px", borderRadius: "4px"
-      });
-      overlay.appendChild(label);
-
-      const buttons = document.createElement('div');
-      Object.assign(buttons.style, {
-        position: "absolute", bottom: "20px", right: "20px", display: "flex", gap: "12px",
-        pointerEvents: "auto"
-      });
-      function makeBtn(txt){ const b=document.createElement('button'); b.textContent=txt; b.className='so-btn'; b.style.width='auto'; return b; }
-      const confirmBtn = makeBtn("Confirm Export");
-      const cancelBtn = makeBtn("Cancel");
-      buttons.appendChild(confirmBtn); buttons.appendChild(cancelBtn);
-      overlay.appendChild(buttons);
-      document.body.appendChild(overlay);
-
-      let exporting = false;
-
-      confirmBtn.onclick = async () => {
-        if (exporting) return;
-        exporting = true;
-        confirmBtn.disabled = true;
-        confirmBtn.textContent = "Exporting…";
-        try {
-          // Ensure map fully painted
-          await new Promise(r => map.once('idle', r));
-          await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-          // Output canvas (fixed 4:3)
-          const OUT_W = 2048, OUT_H = 1536;
-          const exportCanvas = document.createElement('canvas');
-          exportCanvas.width = OUT_W; exportCanvas.height = OUT_H;
-          const ctx = exportCanvas.getContext('2d', { alpha: false });
-
-          // White background to fill any bands
-          ctx.fillStyle = '#FFFFFF';
-          ctx.fillRect(0, 0, OUT_W, OUT_H);
-
-          const mapCanvas = map.getCanvas();
-          const mapRect = mapCanvas.getBoundingClientRect();
-          const boxRect = box.getBoundingClientRect();
-
-          // Convert crop rect (CSS px) -> map canvas px, snap & clamp
-          const cx = mapCanvas.width  / mapRect.width;
-          const cy = mapCanvas.height / mapRect.height;
-
-          let sx = (boxRect.left - mapRect.left) * cx;
-          let sy = (boxRect.top  - mapRect.top)  * cy;
-          let sw = (boxRect.width)  * cx;
-          let sh = (boxRect.height) * cy;
-
-          // Snap to pixel & clamp
-          sx = Math.floor(sx); sy = Math.floor(sy);
-          let ex = Math.ceil(sx + sw), ey = Math.ceil(sy + sh);
-          const maxW = mapCanvas.width, maxH = mapCanvas.height;
-          sx = Math.max(0, Math.min(sx, maxW)); sy = Math.max(0, Math.min(sy, maxH));
-          ex = Math.max(0, Math.min(ex, maxW)); ey = Math.max(0, Math.min(ey, maxH));
-          sw = Math.max(1, ex - sx); sh = Math.max(1, ey - sy);
-
-          // Uniform scale to fit into OUT_W x OUT_H (letterbox; no stretch)
-          const scale = Math.min(OUT_W / sw, OUT_H / sh);
-          const dw = Math.round(sw * scale);
-          const dh = Math.round(sh * scale);
-          const dx0 = Math.round((OUT_W - dw) / 2);
-          const dy0 = Math.round((OUT_H - dh) / 2);
-
-          // Draw cropped map
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-          ctx.drawImage(mapCanvas, sx, sy, sw, sh, dx0, dy0, dw, dh);
-
-          // Legend capture & placement (same relative spot inside crop, then scaled + letterboxed)
-          const legendEl = document.getElementById('legend');
-          if (legendEl && legendEl.style.display !== 'none') {
-            const legendCanvas = await html2canvas(legendEl, { backgroundColor: null, scale: 2 });
-            const lr = legendEl.getBoundingClientRect();
-
-            // Legend position relative to crop box (CSS px -> map canvas px -> scaled, then add letterbox offset)
-            let lmx = (lr.left - boxRect.left) * cx;
-            let lmy = (lr.top  - boxRect.top)  * cy;
-            let lmw = lr.width  * cx;
-            let lmh = lr.height * cy;
-
-            lmx = Math.round(lmx); lmy = Math.round(lmy);
-            lmw = Math.round(lmw); lmh = Math.round(lmh);
-
-            const dx = dx0 + Math.round(lmx * scale);
-            const dy = dy0 + Math.round(lmy * scale);
-            const dw2 = Math.max(1, Math.round(lmw * scale));
-            const dh2 = Math.max(1, Math.round(lmh * scale));
-
-            ctx.drawImage(legendCanvas, 0, 0, legendCanvas.width, legendCanvas.height, dx, dy, dw2, dh2);
-          }
-
-          const img = exportCanvas.toDataURL("image/png");
-          const link = document.createElement('a');
-          link.href = img; link.download = "map-export-4x3.png"; link.click();
-          cleanup();
-        } catch (err) {
-          console.error(err);
-          alert('Export failed. Please try again.');
-          confirmBtn.disabled = false;
-          confirmBtn.textContent = "Confirm Export";
-          exporting = false;
-        }
-      };
-
-      cancelBtn.onclick = () => cleanup();
-
-      function cleanup() {
-        document.body.removeChild(overlay);
-        const panel = document.getElementById('panel');
-        const controls = document.querySelectorAll('.mapboxgl-ctrl');
-        panel.style.display = '';
-        controls.forEach(c => c.style.display = '');
-        map.resize();
-      }
-    });
+  cancelBtn.onclick = () => {
+    document.body.removeChild(overlay);
+    panel.style.display = '';
+    controls.forEach(c => c.style.display = '');
+    map.resize();
+  };
+});
 
     // ===== Revert to Base Map =====
     document.getElementById('revertMap').addEventListener('click', () => {
@@ -933,3 +963,4 @@
   </script>
 </body>
 </html>
+
