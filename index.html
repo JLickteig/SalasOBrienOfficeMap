@@ -143,35 +143,23 @@
     .pickr { flex: 0 0 auto; }
     .pickr .pcr-button { width: 24px; height: 24px; border-radius: 6px; }
 
-    /* Legend: transparent, no border/shadow */
+    /* Legend: transparent, no shadow/border; header removed */
     .map-legend {
       position: absolute;
       left: 50%;
       transform: translateX(-50%);
       bottom: 14px;
-
-      /* visual reset */
       background: transparent;
       border: none;
       box-shadow: none;
-
-      border-radius: 10px;
+      border-radius: 0;
       padding: 8px 10px;
       z-index: 4;
       max-width: min(90%, 900px);
     }
-    .map-legend h4 {
-      margin: 0 0 6px 0;
-      font-size: 13px;
-      font-weight: 700;
-      color: #111;
-      text-align:center;
-    }
-
     #legendItems { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px 16px; }
     .legend-item { display: inline-flex; align-items: center; gap: 6px; }
-    .legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 0px solid #999; display: inline-block; }
-
+    .legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 0; display: inline-block; }
     .pcr-app { z-index: 10002; }
   </style>
 </head>
@@ -245,7 +233,7 @@
       <div style="height:8px;"></div>
       <a href="#" id="downloadTemplate" class="muted">Download CSV template</a>
 
-      <div class="muted" style="margin-top:6px;">Up to 3 additional layers. Each has its own color, name & CSV upload.</div>
+      <div class="muted" style="margin-top:6px;">Up to 3 additional layers. Each has its own color, name, CSV upload & optional Filters toggle.</div>
     </div>
 
     <!-- Tools -->
@@ -258,9 +246,8 @@
   <!-- Map -->
   <div id="map"></div>
 
-  <!-- Legend (centered over map; hidden until a layer is added) -->
+  <!-- Legend (centered over map; header removed) -->
   <div id="legend" class="map-legend" aria-label="Legend" style="display:none;">
-    <h4>Legend</h4>
     <div id="legendItems"></div>
   </div>
 
@@ -274,7 +261,6 @@
 
     // Isochrone settings
     const ISOCHRONE_MINUTES = 180;
-    const ISOCHRONE_PROFILE = 'driving';
     const isoCache = new Map();
 
     // Map init
@@ -290,14 +276,14 @@
     // Data state
     let originalGeojson = null;
     const OFFICE_SOURCE = 'offices';
-    const OFFICE_LAYER = 'offices-layer';
+    const OFFICE_LAYER  = 'offices-layer';
     const HALO_OFFICES_SOURCE = 'halo-offices';
-    const HALO_OFFICES_FILL = 'halo-offices-fill';
+    const HALO_OFFICES_FILL   = 'halo-offices-fill';
 
     // Upload layers state
     const MAX_LAYERS = 3;
     let layerCount = 0;
-    const uploadLayers = [];
+    const uploadLayers = []; // {id, circleLayerId, nameInputId, pickr, visible getter, originalFC, filterActive:boolean}
 
     // Accordion behavior
     document.querySelectorAll('.accordion-header').forEach(h => {
@@ -308,7 +294,7 @@
     });
 
     // Segmented toggle for reach (OFFICES ONLY)
-    const reachOnBtn = document.getElementById('reachOn');
+    const reachOnBtn  = document.getElementById('reachOn');
     const reachOffBtn = document.getElementById('reachOff');
     let reachEnabled = false;
     function setReach(enabled) {
@@ -317,14 +303,9 @@
       reachOnBtn.setAttribute('aria-pressed', String(enabled));
       reachOffBtn.classList.toggle('active', !enabled);
       reachOffBtn.setAttribute('aria-pressed', String(!enabled));
-
       if (!map.isStyleLoaded()) return;
-
-      if (!enabled) {
-        setHaloData(HALO_OFFICES_SOURCE, emptyFC());
-      } else {
-        rebuildOfficeHalos();
-      }
+      if (!enabled) setHaloData(HALO_OFFICES_SOURCE, emptyFC());
+      else rebuildOfficeHalos();
     }
     reachOnBtn.addEventListener('click', () => setReach(true));
     reachOffBtn.addEventListener('click', () => setReach(false));
@@ -337,7 +318,10 @@
         map.addSource(sourceId, { type: 'geojson', data: emptyFC() });
       }
       if (!map.getLayer(layerId)) {
-        map.addLayer({ id: layerId, type: 'fill', source: sourceId, paint: { 'fill-color': color, 'fill-opacity': 0.2 } }, beforeLayerId);
+        map.addLayer(
+          { id: layerId, type: 'fill', source: sourceId, paint: { 'fill-color': color, 'fill-opacity': 0.2 } },
+          beforeLayerId
+        );
       }
     }
     function setHaloData(sourceId, fc) {
@@ -349,7 +333,7 @@
     async function fetchIsochronePolygon(lng, lat) {
       const key = `${lng.toFixed(6)},${lat.toFixed(6)}`;
       if (isoCache.has(key)) return isoCache.get(key);
-      const url = `https://api.mapbox.com/isochrone/v1/mapbox/${'driving'}/${lng},${lat}?contours_minutes=${ISOCHRONE_MINUTES}&polygons=true&generalize=10&access_token=${mapboxgl.accessToken}`;
+      const url = `https://api.mapbox.com/isochrone/v1/mapbox/driving/${lng},${lat}?contours_minutes=${ISOCHRONE_MINUTES}&polygons=true&generalize=10&access_token=${mapboxgl.accessToken}`;
       try {
         const res = await fetch(url);
         if (!res.ok) throw new Error('Isochrone fetch failed');
@@ -359,9 +343,8 @@
         isoCache.set(key, poly);
         return poly;
       } catch (err) {
-        const circle = turf.circle([lng, lat], 289.7, { steps: 128, units: 'kilometers' });
-        isoCache.set(key, circle);
-        return circle;
+        // Fallback: 180min ~ 289.7km at 60mph avg, rough circle
+        return turf.circle([lng, lat], 289.7, { steps: 128, units: 'kilometers' });
       }
     }
     async function buildIsochronesForPoints(points) {
@@ -414,48 +397,38 @@
       }
     });
 
-    // ====== NEW: apply filters to uploaded layers when they opt-in ======
-    function applyFiltersToUploads() {
-      const regionSelect = document.getElementById('regionFilter');
-      const buSelect = document.getElementById('buFilter');
-
-      const regions = Array.from(regionSelect.selectedOptions).map(o => o.value);
-      const selectedStates = new Set(
-        regions.map(v => (v.includes('|') ? v.split('|')[1] : v))
-               .map(s => String(s || '').trim().toLowerCase())
-      );
-      const selectedBUs = new Set(
-        Array.from(buSelect.selectedOptions).map(o => String(o.value || '').trim())
-      );
-
-      for (const l of uploadLayers) {
-        const src = map.getSource(l.sourceId);
-        if (!src || !l.rawData) continue;
-
-        if (!l.follow) {
-          src.setData(l.rawData);
-          continue;
+    // Filters (helpers shared by offices + uploads)
+    function getSelectedValues(selectEl) { return Array.from(selectEl.selectedOptions || []).map(o => o.value); }
+    function currentRegionSelection() {
+      const el = document.getElementById('regionFilter');
+      return getSelectedValues(el); // e.g. "US|CA", "CAN|ON"
+    }
+    function currentBUSelection() {
+      const el = document.getElementById('buFilter');
+      return getSelectedValues(el);
+    }
+    function filterFeaturesBySelections(features, regions, busSel, isOfficeData) {
+      // For offices: regions compare using country|state. For uploads: state only.
+      const regionStates = regions.map(code => (code.split('|')[1] || '').trim());
+      return features.filter(f => {
+        const p = f.properties || {};
+        // Region filter
+        if (regions.length) {
+          if (isOfficeData) {
+            const code = (p.country || '') + '|' + (p.state || '');
+            if (!regions.includes(code)) return false;
+          } else {
+            const st = (p.state || '').trim();
+            if (!st || !regionStates.includes(st)) return false;
+          }
         }
-
-        const feats = l.rawData.features.filter(f => {
-          const p = f.properties || {};
-          let ok = true;
-          if (selectedStates.size) {
-            const st = String(p.state || '').trim().toLowerCase();
-            ok = st && selectedStates.has(st);
-          }
-          if (ok && selectedBUs.size) {
-            const bu = String(p.bu || '').trim();
-            ok = bu && selectedBUs.has(bu);
-          }
-          return ok;
-        });
-
-        src.setData({ type: 'FeatureCollection', features: feats });
-      }
+        // BU filter (only if the feature has a 'bu' property)
+        if (busSel.length && p.bu && !busSel.includes(p.bu)) return false;
+        return true;
+      });
     }
 
-    // Filters
+    // Filters UI and application
     function buildFilters(gj) {
       const regionSelect = document.getElementById('regionFilter');
       const buSelect = document.getElementById('buFilter');
@@ -463,14 +436,8 @@
       regionSelect.innerHTML = '';
       buSelect.innerHTML = '';
 
-      const states = [...new Set(gj.features
-        .filter(f => f.properties.country === 'US')
-        .map(f => f.properties.state).filter(Boolean))].sort();
-
-      const provinces = [...new Set(gj.features
-        .filter(f => f.properties.country === 'CAN')
-        .map(f => f.properties.state).filter(Boolean))].sort();
-
+      const states = [...new Set(gj.features.filter(f => f.properties.country === 'US').map(f => f.properties.state).filter(Boolean))].sort();
+      const provinces = [...new Set(gj.features.filter(f => f.properties.country === 'CAN').map(f => f.properties.state).filter(Boolean))].sort();
       const bus = [...new Set(gj.features.map(f => f.properties.bu).filter(Boolean))].sort();
 
       const caGroup = document.createElement('optgroup'); caGroup.label = 'Canada';
@@ -481,50 +448,30 @@
 
       regionSelect.appendChild(caGroup);
       regionSelect.appendChild(usGroup);
-
       bus.forEach(b => { const o = document.createElement('option'); o.value = b; o.textContent = b; buSelect.appendChild(o); });
 
-      function getSelected(select) { return Array.from(select.selectedOptions).map(o => o.value); }
-
       async function applyFilters() {
-        const regions = getSelected(regionSelect);
-        const busSel = getSelected(buSelect);
+        const regions = currentRegionSelection();
+        const busSel  = currentBUSelection();
 
-        const filtered = {
+        const filteredOffices = {
           type: 'FeatureCollection',
-          features: originalGeojson.features.filter(f => {
-            const props = f.properties;
-            let ok = true;
-            if (regions.length) {
-              const code = props.country + '|' + props.state;
-              if (!regions.includes(code)) ok = false;
-            }
-            if (busSel.length && !busSel.includes(props.bu)) ok = false;
-            return ok;
-          })
+          features: filterFeaturesBySelections(originalGeojson.features, regions, busSel, true)
         };
+        map.getSource(OFFICE_SOURCE).setData(filteredOffices);
+        if (reachEnabled) await rebuildOfficeHalos(filteredOffices);
 
-        map.getSource(OFFICE_SOURCE).setData(filtered);
-        if (reachEnabled) await rebuildOfficeHalos(filtered);
-
-        // Also update uploads that opted-in
+        // Apply to uploaded layers that opted-in
         applyFiltersToUploads();
       }
 
-      document.getElementById('clearRegion').addEventListener('click', () => {
-        regionSelect.selectedIndex = -1;
-        applyFilters();
-      });
-      document.getElementById('clearBU').addEventListener('click', () => {
-        buSelect.selectedIndex = -1;
-        applyFilters();
-      });
+      document.getElementById('clearRegion').addEventListener('click', () => { regionSelect.selectedIndex = -1; applyFilters(); });
+      document.getElementById('clearBU').addEventListener('click',     () => { buSelect.selectedIndex    = -1; applyFilters(); });
       document.getElementById('clearFilters').addEventListener('click', () => {
-        regionSelect.selectedIndex = -1;
-        buSelect.selectedIndex = -1;
+        regionSelect.selectedIndex = -1; buSelect.selectedIndex = -1;
         map.getSource(OFFICE_SOURCE).setData(originalGeojson);
         if (reachEnabled) rebuildOfficeHalos(originalGeojson);
-        applyFiltersToUploads(); // reset uploads
+        applyFiltersToUploads();
       });
 
       regionSelect.addEventListener('change', applyFilters);
@@ -588,8 +535,8 @@
     }
     function addLegendItem(container, color, name) {
       const row = document.createElement('div'); row.className = 'legend-item';
-      const sw = document.createElement('span'); sw.className = 'legend-swatch'; sw.style.background = color;
-      const text = document.createElement('span'); text.textContent = name;
+      const sw  = document.createElement('span'); sw.className = 'legend-swatch'; sw.style.background = color;
+      const text= document.createElement('span'); text.textContent = name;
       row.appendChild(sw); row.appendChild(text); container.appendChild(row);
     }
 
@@ -610,7 +557,7 @@
     }
     function normalizeHex(hex) { if (!hex) return '#000000'; return hex.length === 9 ? hex.slice(0, 7) : hex; }
 
-    // --- Interaction shield for color picker ---
+    // Interaction shield for color picker
     let __shield = null;
     function showInteractionShield() {
       if (__shield) return;
@@ -620,7 +567,6 @@
     }
     function hideInteractionShield() { if (!__shield) return; __shield.remove(); __shield = null; }
 
-    // ===== NEW addUploadLayer (with "Filters: On/Off") =====
     function addUploadLayer() {
       const index = ++layerCount;
       const layerId = `uploaded-layer-${index}`;
@@ -650,7 +596,10 @@
             <input type="file" id="file-${layerId}" accept=".csv">
           </div>
           <div class="layer-row">
-            <button class="icon-btn" id="filters-${layerId}" title="Make this layer follow the Filters above">Filters: Off</button>
+            <label class="muted" style="display:flex; align-items:center; gap:6px;">
+              <input type="checkbox" id="filter-${layerId}">
+              Apply Filters to this layer
+            </label>
           </div>
           <div id="${statusId}" class="muted"></div>
         </div>
@@ -710,7 +659,6 @@
       pickr.on('cancel', () => { isPicking = false; restoreAfterPickr(); });
       pickr.on('hide',   () => { isPicking = false; restoreAfterPickr(); });
 
-      // Visibility toggle
       let visible = true;
       document.getElementById(`toggle-${layerId}`).addEventListener('click', () => {
         visible = !visible;
@@ -718,7 +666,6 @@
         updateLegend();
       });
 
-      // Remove layer
       document.getElementById(`remove-${layerId}`).addEventListener('click', () => {
         card.remove();
         if (map.getLayer(circleLayerId)) map.removeLayer(circleLayerId);
@@ -730,35 +677,52 @@
 
       document.getElementById(`name-${layerId}`).addEventListener('input', updateLegend);
 
-      const fileInput = document.getElementById(`file-${layerId}`);
-      const perLayerStatus = document.getElementById(statusId);
+      const fileInput     = document.getElementById(`file-${layerId}`);
+      const perLayerStatus= document.getElementById(statusId);
       fileInput.addEventListener('change', (e) => handleCSVUpload(e, layerId, pickr, perLayerStatus));
 
-      // Keep layer state (follow + rawData)
-      const layerObj = {
+      const filterToggle = document.getElementById(`filter-${layerId}`);
+      filterToggle.addEventListener('change', () => {
+        const layer = uploadLayers.find(l => l.id === layerId);
+        if (layer) {
+          layer.filterActive = filterToggle.checked;
+          applyFiltersToUploadLayer(layer);
+          updateLegend();
+        }
+      });
+
+      uploadLayers.push({
         id: layerId,
         sourceId: layerId,
         circleLayerId,
         nameInputId: `name-${layerId}`,
         pickr,
-        get visible(){ return visible; },
-        follow: false,
-        rawData: emptyFC()
-      };
-      uploadLayers.push(layerObj);
-
-      // Follow Filters toggle
-      const filtersBtn = document.getElementById(`filters-${layerId}`);
-      filtersBtn.addEventListener('click', () => {
-        layerObj.follow = !layerObj.follow;
-        filtersBtn.textContent = `Filters: ${layerObj.follow ? 'On' : 'Off'}`;
-        applyFiltersToUploads();
+        originalFC: emptyFC(),
+        filterActive: false,
+        get visible() { return visible; }
       });
-
       updateLegend();
     }
 
-    // Handle CSV for a given layer (worker parse, supports BU; preserves rawData)
+    // Apply filters to one / all upload layers
+    function applyFiltersToUploadLayer(layer) {
+      const src = map.getSource(layer.id);
+      if (!src) return;
+      const regions = currentRegionSelection();
+      const busSel  = currentBUSelection();
+      const orig = layer.originalFC || emptyFC();
+      if (!layer.filterActive) { src.setData(orig); return; }
+      const filtered = {
+        type: 'FeatureCollection',
+        features: filterFeaturesBySelections(orig.features, regions, busSel, false)
+      };
+      src.setData(filtered);
+    }
+    function applyFiltersToUploads() {
+      for (const l of uploadLayers) applyFiltersToUploadLayer(l);
+    }
+
+    // Handle CSV for a given layer
     function handleCSVUpload(event, layerId, pickr, statusEl) {
       const input = event.target;
       const file = input.files && input.files[0];
@@ -801,31 +765,30 @@
                   properties: {
                     officeName: row["LABEL"] || row["Label"] || "",
                     address: row.ADDRESS || "",
-                    state: row["STATE / PROVINCE"] || row.State || row.STATE || "",
-                    bu: row.BU || row['Business Unit'] || row['BUSINESS UNIT'] || "",
+                    state: row["STATE / PROVINCE"] || "",
+                    bu: row["BU"] || row["Business Unit"] || row["business_unit"] || undefined,
                     color
                   }
                 });
               }
             }
 
+            const uploadedGeojson = { type:"FeatureCollection", features };
+
+            // Store original for future re-filtering
+            const layer = uploadLayers.find(l => l.id === layerId);
+            if (layer) layer.originalFC = uploadedGeojson;
+
             const name = (document.getElementById(`name-${layerId}`)?.value || 'Layer').trim();
             statusEl.textContent = features.length > 0
               ? `✅ ${features.length} locations added to ${name}.`
               : "⚠️ No valid locations found in the file.";
 
-            const uploadedGeojson = { type:"FeatureCollection", features };
-
-            // remember raw data on the layer object
-            const layerObj = uploadLayers.find(l => l.id === layerId);
-            if (layerObj) layerObj.rawData = uploadedGeojson;
-
-            const src = map.getSource(layerId);
-            if (layerObj && layerObj.follow) {
-              // if following, immediately apply current filters
-              applyFiltersToUploads();
-            } else if (src) {
-              src.setData(uploadedGeojson);
+            // Apply filters if toggle is on; otherwise show original
+            if (layer && layer.filterActive) applyFiltersToUploadLayer(layer);
+            else {
+              const src = map.getSource(layerId);
+              if (src) src.setData(uploadedGeojson);
             }
 
             wireUploadLayerPopups(layerId);
@@ -834,7 +797,8 @@
             console.error(err);
             statusEl.textContent = "❌ Upload failed.";
           } finally {
-            input.value = ""; // allow re-uploading the same file
+            // allow re-uploading the same file
+            input.value = "";
           }
         },
         error: (err) => {
@@ -859,7 +823,7 @@
       map.on('mouseleave', circleId, () => { map.getCanvas().style.cursor = ''; popup.remove(); });
     }
 
-    // ===== Export (fixed viewfinder; pan/zoom map underneath; exact 21.278:12.889) =====
+    // ===== Export (fixed viewfinder; map zoom locked; exact 21.278:12.889; legend centered + 30px bottom margin) =====
     document.getElementById('exportMap').addEventListener('click', () => {
       const panel = document.getElementById('panel');
       const controls = document.querySelectorAll('.mapboxgl-ctrl');
@@ -870,9 +834,26 @@
       const prevCtrlVis = [];
       controls.forEach((c, i) => { prevCtrlVis[i] = c.style.visibility; c.style.visibility = 'hidden'; });
 
+      // Lock zoom (keep same zoom as at click time); allow panning
+      const restore = {
+        scrollZoom: map.scrollZoom.isEnabled(),
+        boxZoom: map.boxZoom.isEnabled(),
+        doubleClickZoom: map.doubleClickZoom.isEnabled(),
+        touchZoomRotate: map.touchZoomRotate.isEnabled(),
+        keyboard: map.keyboard.isEnabled(),
+        dragRotate: map.dragRotate.isEnabled()
+      };
+      map.scrollZoom.disable();
+      map.boxZoom.disable();
+      map.doubleClickZoom.disable();
+      map.touchZoomRotate.disable();
+      map.keyboard.disable();
+      map.dragRotate.disable();
+      // (dragPan remains as-is so you can reposition without changing zoom)
+
       // DO NOT call map.resize()
 
-      // Fixed crop frame (exact ratio); overlay is click-through so map can pan/zoom
+      // Fixed crop frame (exact ratio); overlay is click-through so map can pan underneath
       const TARGET_AR = 21.278 / 12.889; // ≈ 1.650865
       const overlay = document.createElement('div');
       overlay.style.cssText = 'position:fixed; inset:0; z-index:9999; pointer-events:none;';
@@ -891,7 +872,7 @@
       overlay.appendChild(frame);
 
       const hint = document.createElement('div');
-      hint.textContent = 'Pan/zoom the map to compose. Resize frame with the slider.';
+      hint.textContent = 'Pan the map to compose (zoom locked). Resize frame with the slider.';
       Object.assign(hint.style, {
         position: 'absolute', top: '15px', left: '50%', transform: 'translateX(-50%)',
         fontSize: '14px', color: '#fff', background: 'rgba(0,0,0,0.6)',
@@ -972,7 +953,7 @@
           let sw = boxRect.width  * cx;
           let sh = boxRect.height * cy;
 
-          // Snap & clamp
+          // Snap to whole device pixels & clamp
           sx = Math.max(0, Math.floor(sx));
           sy = Math.max(0, Math.floor(sy));
           const ex = Math.min(mapCanvas.width,  Math.ceil(sx + sw));
@@ -987,39 +968,40 @@
           const ctx = exportCanvas.getContext('2d', { alpha: false });
           ctx.imageSmoothingEnabled = false;
 
-          // Draw the cropped map
+          // Draw cropped map
           ctx.drawImage(mapCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
 
-       // === Legend capture (transparent; force EXACT 30px bottom margin; centered) ===
-const legendEl = document.getElementById('legend');
-if (legendEl && legendEl.style.display !== 'none') {
-  const scaleLegend = mapCanvas.width / mapRect.width; // CSS→canvas scale
-  const lr = legendEl.getBoundingClientRect();
+          // === Legend capture (transparent; centered; EXACT 30px bottom margin) ===
+          const legendEl = document.getElementById('legend');
+          if (legendEl && legendEl.style.display !== 'none') {
+            const scaleLegend = mapCanvas.width / mapRect.width; // CSS→canvas scale
+            const lr = legendEl.getBoundingClientRect();
 
-  const legendCanvas = await html2canvas(legendEl, {
-    backgroundColor: null,
-    scale: scaleLegend,
-    useCORS: true,
-    removeContainer: true,
-    logging: false
-  });
+            const legendCanvas = await html2canvas(legendEl, {
+              backgroundColor: null,
+              scale: scaleLegend,
+              useCORS: true,
+              removeContainer: true,
+              logging: false
+            });
 
-  const legendW = Math.round(lr.width * scaleLegend);
-  const legendH = Math.round(lr.height * scaleLegend);
+            const legendW = Math.round(lr.width  * scaleLegend);
+            const legendH = Math.round(lr.height * scaleLegend);
 
-  // center horizontally inside the export crop
-  const lmx = Math.max(0, Math.round((sw - legendW) / 2));
+            // Center horizontally in the crop
+            let lmx = Math.round((sw - legendW) / 2);
+            // Exactly 30px above the bottom (in canvas px)
+            const desiredBottom = Math.round(30 * scaleLegend);
+            let lmy = Math.max(0, sh - desiredBottom - legendH);
 
-  // 30px from bottom (converted to canvas pixels)
-  const desiredBottom = Math.round(30 * scaleLegend);
-  const lmy = Math.max(0, sh - desiredBottom - legendH);
+            // Clamp if legend wider than crop
+            lmx = Math.max(0, Math.min(lmx, sw - legendW));
 
-  const prevSmooth = ctx.imageSmoothingEnabled;
-  ctx.imageSmoothingEnabled = true;
-  ctx.drawImage(legendCanvas, lmx, lmy);
-  ctx.imageSmoothingEnabled = prevSmooth;
-}
-
+            const prevSmooth = ctx.imageSmoothingEnabled;
+            ctx.imageSmoothingEnabled = true;
+            ctx.drawImage(legendCanvas, lmx, lmy);
+            ctx.imageSmoothingEnabled = prevSmooth;
+          }
 
           const url = exportCanvas.toDataURL('image/png');
           const a = document.createElement('a');
@@ -1043,7 +1025,13 @@ if (legendEl && legendEl.style.display !== 'none') {
         document.body.removeChild(overlay);
         panel.style.visibility = prevPanelVis || '';
         controls.forEach((c, i) => c.style.visibility = prevCtrlVis[i] || '');
-        exporting = false;
+        // Restore interactions
+        if (restore.scrollZoom) map.scrollZoom.enable(); else map.scrollZoom.disable();
+        if (restore.boxZoom) map.boxZoom.enable(); else map.boxZoom.disable();
+        if (restore.doubleClickZoom) map.doubleClickZoom.enable(); else map.doubleClickZoom.disable();
+        if (restore.touchZoomRotate) map.touchZoomRotate.enable(); else map.touchZoomRotate.disable();
+        if (restore.keyboard) map.keyboard.enable(); else map.keyboard.disable();
+        if (restore.dragRotate) map.dragRotate.enable(); else map.dragRotate.disable();
       }
     });
 
@@ -1054,13 +1042,11 @@ if (legendEl && legendEl.style.display !== 'none') {
         if (map.getSource(l.id)) map.removeSource(l.id);
         const card = document.getElementById(`card-${l.id}`); if (card) card.remove();
       }
-      uploadLayers.length = 0;
-      layerCount = 0;
+      uploadLayers.length = 0; layerCount = 0;
 
       const regionSelect = document.getElementById('regionFilter');
       const buSelect = document.getElementById('buFilter');
-      regionSelect.selectedIndex = -1;
-      buSelect.selectedIndex = -1;
+      regionSelect.selectedIndex = -1; buSelect.selectedIndex = -1;
 
       if (originalGeojson) map.getSource(OFFICE_SOURCE).setData(originalGeojson);
 
