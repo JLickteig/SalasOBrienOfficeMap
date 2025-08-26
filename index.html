@@ -195,6 +195,9 @@
     }
     .legend-item { display: inline-flex; align-items: center; gap: 6px; }
     .legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid #999; display: inline-block; }
+
+    /* ---- NEW: ensure Pickr popup is above everything ---- */
+    .pcr-app { z-index: 9999; }
   </style>
 </head>
 <body>
@@ -314,7 +317,7 @@
     // Data state
     let originalGeojson = null;
     const OFFICE_SOURCE = 'offices';
-    const OFFICE_LAYER = 'offices-layer';
+    let OFFICE_LAYER = 'offices-layer';
     const HALO_OFFICES_SOURCE = 'halo-offices'; // offices-only halos
     const HALO_OFFICES_FILL = 'halo-offices-fill';
 
@@ -639,7 +642,10 @@
         el: `#picker-${layerId}`,
         theme: 'classic',
         default: defaultColor,
-        components: { preview: true, opacity: false, hue: true, interaction: { hex: true, input: true } }
+        // Mount to body so popup is not clipped; button toggles open/close
+        container: document.body,
+        useAsButton: true,
+        components: { preview: true, opacity: false, hue: true, interaction: { hex: true, input: true, save: true } }
       });
 
       // Ensure initial UI shows defaultColor and stays in sync
@@ -650,12 +656,10 @@
         if (btn) btn.style.background = defaultColor;
       });
 
-      // Keep picker button + map layer color in sync (change + changestop + save)
       function applyColorToLayer(hex) {
         const pickerButton = document.querySelector(`#picker-${layerId} .pcr-button`);
         if (pickerButton) pickerButton.style.background = hex;
         if (map.getLayer(circleLayerId)) map.setPaintProperty(circleLayerId, 'circle-color', hex);
-        // rewrite feature colors for popups
         const src = map.getSource(layerId);
         if (src && src._data) {
           const data = src._data;
@@ -664,9 +668,29 @@
         }
         updateLegend();
       }
-      pickr.on('change', (color) => applyColorToLayer(color.toHEXA().toString()));
-      pickr.on('changestop', (color) => applyColorToLayer(color.toHEXA().toString()));
-      pickr.on('save', (color) => { applyColorToLayer(color.toHEXA().toString()); pickr.hide(); });
+
+      // Live updates + robust end-of-drag/save updates
+      pickr.on('change',     c => applyColorToLayer(c.toHEXA().toString()));
+      pickr.on('changestop', c => applyColorToLayer(c.toHEXA().toString()));
+      pickr.on('save',       c => { applyColorToLayer(c.toHEXA().toString()); pickr.hide(); });
+
+      // Disable map interactions while picker is open (prevents "stuck drag")
+      pickr.on('show', () => {
+        map.dragPan.disable();
+        map.scrollZoom.disable();
+        map.boxZoom.disable();
+        map.dragRotate.disable();
+        map.keyboard.disable();
+        map.doubleClickZoom.disable();
+      });
+      pickr.on('hide', () => {
+        map.dragPan.enable();
+        map.scrollZoom.enable();
+        map.boxZoom.enable();
+        map.dragRotate.enable();
+        map.keyboard.enable();
+        map.doubleClickZoom.enable();
+      });
 
       // Visibility toggle
       let visible = true;
@@ -957,6 +981,14 @@
     const legendObserver = new MutationObserver(() => updateLegend());
     legendObserver.observe(document.getElementById('uploadLayers'), { childList: true, subtree: true });
 
+    // ---- NEW: prevent Mapbox from hijacking Pickr pointer events ----
+    ['pointerdown','mousedown','touchstart'].forEach(evt => {
+      document.addEventListener(evt, (e) => {
+        if (e.target.closest('.pcr-app') || e.target.closest('.pickr')) {
+          e.stopPropagation();
+        }
+      }, true); // capture phase
+    });
   </script>
 </body>
 </html>
