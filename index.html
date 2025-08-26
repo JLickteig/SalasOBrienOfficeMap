@@ -746,7 +746,6 @@
       map.on('mouseleave', circleId, () => { map.getCanvas().style.cursor = ''; popup.remove(); });
     }
 
- <script>
 // ===== Export (5:3, no zoom change, exact on-screen pixels) =====
 document.getElementById('exportMap').addEventListener('click', () => {
   const panel = document.getElementById('panel');
@@ -919,7 +918,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
     exporting = false;
   }
 });
-</script>
+
 
 
     // ===== Revert to Base Map =====
@@ -965,6 +964,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
