@@ -54,7 +54,7 @@
       padding: 12px;
       margin-bottom: 12px;
       background: #fff;
-      overflow: visible; /* keep Pickr popup from clipping if container=panel */
+      overflow: visible;
     }
     .section-title {
       font-weight: 600;
@@ -390,6 +390,20 @@
       return merged ? { type: 'FeatureCollection', features: [merged] } : emptyFC();
     }
 
+    // HTML helpers for popups
+    function escapeHTML(s='') {
+      return String(s)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#39;');
+    }
+    function nl2br(s='') {
+      // handle both real newlines and literal "\n"
+      return escapeHTML(s).replace(/\\n|\r\n|\r|\n/g, '<br>');
+    }
+
     // Map load
     map.on('load', async () => {
       try {
@@ -486,20 +500,28 @@
       buSelect.addEventListener('change', applyFilters);
     }
 
-    // Office popups
+    // Office popups (with Alt+Enter support)
     function wireOfficePopups() {
       const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
       map.on('mouseenter', OFFICE_LAYER, (e) => {
         map.getCanvas().style.cursor = 'pointer';
-        const props = e.features[0].properties;
-        popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
-          `<div style="line-height:1;">
-            <div style="font-weight:bold; color:#009DE0; margin:0;">${props.officeName || ''}</div>
-            <div style="font-size:11px; color:#333; margin:0;">${props.address || ''}</div>
-            <div style="font-size:11px; color:#666; margin:0;">${props.phone || ''}</div>
-            <div style="font-size:11px; color:#666; margin:0;">${props.bu || ''}</div>
-          </div>`
-        ).addTo(map);
+        const p = e.features[0].properties || {};
+        const officeName = nl2br(p.officeName || '');
+        const address    = nl2br(p.address || '');
+        const phone      = nl2br(p.phone || '');
+        const bu         = nl2br(p.bu || '');
+
+        popup
+          .setLngLat(e.features[0].geometry.coordinates)
+          .setHTML(
+            `<div style="line-height:1.1;">
+              <div style="font-weight:bold; color:#009DE0; margin:0;">${officeName}</div>
+              <div style="font-size:11px; color:#333; margin:0;">${address}</div>
+              <div style="font-size:11px; color:#666; margin:0;">${phone}</div>
+              <div style="font-size:11px; color:#666; margin:0;">${bu}</div>
+            </div>`
+          )
+          .addTo(map);
       });
       map.on('mouseleave', OFFICE_LAYER, () => { map.getCanvas().style.cursor = ''; popup.remove(); });
     }
@@ -573,7 +595,7 @@
       return hex;
     }
 
-    // --- Interaction shield so Pickr doesn't "stick" ---
+    // --- Interaction shield for color picker ---
     let __shield = null;
     function showInteractionShield() {
       if (__shield) return;
@@ -581,7 +603,7 @@
       Object.assign(__shield.style, {
         position: 'fixed',
         inset: '0',
-        zIndex: '10001',   // below .pcr-app (10002), above everything else
+        zIndex: '10001',   // below .pcr-app (10002)
         cursor: 'default'
       });
       document.body.appendChild(__shield);
@@ -640,11 +662,11 @@
         el: `#picker-${layerId}`,
         theme: 'classic',
         default: defaultColor,
-        container: document.body,  // allow popup to escape panel
+        container: document.body,
         components: { preview: true, opacity: false, hue: true, interaction: { hex: true, input: true, save: true, cancel: true } }
       });
 
-      // --- Pickr wiring with gating so it never updates after closing ---
+      // --- Pickr wiring (no sticky drags / no ghost updates) ---
       let isPicking = false;
 
       function applyColorToLayer(hex) {
@@ -661,7 +683,6 @@
         updateLegend();
       }
 
-      // Initial button color sync
       pickr.on('init', () => {
         const hex = normalizeHex(pickr.getColor().toHEXA().toString() || defaultColor);
         const btn = document.querySelector(`#picker-${layerId} .pcr-button`);
@@ -669,15 +690,12 @@
         if (map.getLayer(circleLayerId)) map.setPaintProperty(circleLayerId, 'circle-color', hex);
       });
 
-      // Only react to changes while open
       pickr.on('change', (c) => {
         if (!isPicking) return;
         applyColorToLayer(c.toHEXA().toString());
       });
 
-      // Open/close: control gesture blocking and gating
       const mapCanvas = map.getCanvas();
-
       function restoreAfterPickr() {
         hideInteractionShield();
         map.dragPan.enable();
@@ -686,33 +704,29 @@
         map.dragRotate.enable();
         map.keyboard.enable();
         map.doubleClickZoom.enable();
-        mapCanvas.style.pointerEvents = ''; // ensure restored
+        mapCanvas.style.pointerEvents = '';
       }
 
       pickr.on('show', () => {
-        isPicking = true;            // start live updates
-        showInteractionShield();     // block the map from stealing mouseup
-        // disable map gestures
+        isPicking = true;
+        showInteractionShield();
         map.dragPan.disable();
         map.scrollZoom.disable();
         map.boxZoom.disable();
         map.dragRotate.disable();
         map.keyboard.disable();
         map.doubleClickZoom.disable();
-        mapCanvas.style.pointerEvents = ''; // shield handles blocking
+        mapCanvas.style.pointerEvents = '';
       });
 
-      // Finalize + close
       pickr.on('save', (c) => {
-        applyColorToLayer(c.toHEXA().toString()); // final apply
+        applyColorToLayer(c.toHEXA().toString());
         isPicking = false;
         restoreAfterPickr();
         pickr.hide();
       });
-
-      // Close/cancel without applying further
-      pickr.on('hide', () => { isPicking = false; restoreAfterPickr(); });
       pickr.on('cancel', () => { isPicking = false; restoreAfterPickr(); });
+      pickr.on('hide',   () => { isPicking = false; restoreAfterPickr(); });
 
       // Visibility toggle
       let visible = true;
@@ -755,7 +769,6 @@
         get visible() { return visible; }
       });
 
-      // refresh legend immediately (new layer appears; legend becomes visible)
       updateLegend();
     }
 
@@ -817,7 +830,7 @@
           const src = map.getSource(layerId);
           if (src) src.setData(uploadedGeojson);
 
-          // Popups for this layer
+          // Popups for this layer (with Alt+Enter -> <br>)
           wireUploadLayerPopups(layerId);
 
           updateLegend();
@@ -834,15 +847,17 @@
       const circleId = `uploaded-circle-${layerId.split('-').pop()}`;
       map.on('mouseenter', circleId, (e) => {
         map.getCanvas().style.cursor = 'pointer';
-        const props = e.features[0].properties;
+        const p = e.features[0].properties || {};
+        const label   = nl2br(p.officeName || '(No LABEL)');
+        const address = nl2br(p.address || '');
         popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
-          `<span style="font-weight:bold; color:${props.color || '#009DE0'};">${props.officeName || '(No LABEL)'}</span><br>${props.address || ''}`
+          `<span style="font-weight:bold; color:${p.color || '#009DE0'};">${label}</span><br>${address}`
         ).addTo(map);
       });
       map.on('mouseleave', circleId, () => { map.getCanvas().style.cursor = ''; popup.remove(); });
     }
 
-    // ===== Export (crop to dashed box + legend at same on-screen position) =====
+    // ===== Export (crop to dashed box + legend at same on-screen position, no banding) =====
     document.getElementById('exportMap').addEventListener('click', () => {
       const panel = document.getElementById('panel');
       const controls = document.querySelectorAll('.mapboxgl-ctrl');
@@ -886,7 +901,7 @@
       confirmBtn.onclick = async () => {
         // Wait for map to fully paint so there are no transparent bands
         await new Promise(r => map.once('idle', r));
-        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); // extra paint safety
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
         const exportCanvas = document.createElement('canvas');
         exportCanvas.width = 2048; exportCanvas.height = 1536; // 4:3
@@ -900,11 +915,27 @@
         const cx = mapCanvas.width  / mapRect.width;
         const cy = mapCanvas.height / mapRect.height;
 
-        // Crop region in map canvas pixels (exactly what user framed)
-        const sx = (boxRect.left - mapRect.left) * cx;
-        const sy = (boxRect.top  - mapRect.top)  * cy;
-        const sw = boxRect.width  * cx;
-        const sh = boxRect.height * cy;
+        // Proposed crop in canvas px
+        let sx = (boxRect.left - mapRect.left) * cx;
+        let sy = (boxRect.top  - mapRect.top)  * cy;
+        let sw = boxRect.width  * cx;
+        let sh = boxRect.height * cy;
+
+        // --- Pixel snapping & clamping to kill banding ---
+        // Snap to integer device pixels (avoid sampling half-transparent edges)
+        sx = Math.floor(sx);
+        sy = Math.floor(sy);
+        const ex = Math.ceil(sx + sw);
+        const ey = Math.ceil(sy + sh);
+        // Clamp to map canvas bounds
+        const maxW = mapCanvas.width;
+        const maxH = mapCanvas.height;
+        sx = Math.max(0, Math.min(sx, maxW));
+        sy = Math.max(0, Math.min(sy, maxH));
+        const exClamped = Math.max(0, Math.min(ex, maxW));
+        const eyClamped = Math.max(0, Math.min(ey, maxH));
+        sw = Math.max(1, exClamped - sx);
+        sh = Math.max(1, eyClamped - sy);
 
         // Draw cropped map scaled to export canvas
         ctx.drawImage(mapCanvas, sx, sy, sw, sh, 0, 0, exportCanvas.width, exportCanvas.height);
@@ -915,19 +946,24 @@
           const legendCanvas = await html2canvas(legendEl, { backgroundColor: null, scale: 2 });
           const lr = legendEl.getBoundingClientRect();
 
-          // Convert legend rect relative to the crop box into export px
           const scaleX = exportCanvas.width  / sw;
           const scaleY = exportCanvas.height / sh;
 
-          const legendLeftInMapPx = (lr.left - boxRect.left) * cx;
-          const legendTopInMapPx  = (lr.top  - boxRect.top)  * cy;
-          const legendWInMapPx    = lr.width  * cx;
-          const legendHInMapPx    = lr.height * cy;
+          // legend position relative to crop box (convert to canvas px, snapped)
+          let lmx = (lr.left - boxRect.left) * cx;
+          let lmy = (lr.top  - boxRect.top)  * cy;
+          let lmw = lr.width  * cx;
+          let lmh = lr.height * cy;
 
-          const dx = legendLeftInMapPx * scaleX;
-          const dy = legendTopInMapPx  * scaleY;
-          const dw = legendWInMapPx    * scaleX;
-          const dh = legendHInMapPx    * scaleY;
+          lmx = Math.round(lmx);
+          lmy = Math.round(lmy);
+          lmw = Math.round(lmw);
+          lmh = Math.round(lmh);
+
+          const dx = lmx * scaleX;
+          const dy = lmy * scaleY;
+          const dw = lmw * scaleX;
+          const dh = lmh * scaleY;
 
           ctx.drawImage(legendCanvas, 0, 0, legendCanvas.width, legendCanvas.height, dx, dy, dw, dh);
         }
