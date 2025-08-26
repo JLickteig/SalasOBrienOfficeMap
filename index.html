@@ -746,34 +746,7 @@
       map.on('mouseleave', circleId, () => { map.getCanvas().style.cursor = ''; popup.remove(); });
     }
 
-    // --- Helpers for safe rendering waits ---
-function waitForIdleOrTimeout(timeoutMs = 1200) {
-  return new Promise((resolve) => {
-    // If already fully rendered, continue immediately
-    if (map.loaded()) return resolve();
-
-    let resolved = false;
-    const onIdle = () => {
-      if (resolved) return;
-      resolved = true;
-      map.off('idle', onIdle);
-      resolve();
-    };
-
-    map.on('idle', onIdle);
-    setTimeout(() => {
-      if (resolved) return;
-      resolved = true;
-      map.off('idle', onIdle);
-      resolve(); // proceed even if idle never fired
-    }, timeoutMs);
-  });
-}
-function twoFrames() {
-  return new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-}
-
-// ===== Export (letterbox, no stretch, legend drawn, single click, never stuck) =====
+  // ===== Export (exact crop, no scaling, no white bands, legend aligned) =====
 document.getElementById('exportMap').addEventListener('click', () => {
   const panel = document.getElementById('panel');
   const controls = document.querySelectorAll('.mapboxgl-ctrl');
@@ -783,14 +756,20 @@ document.getElementById('exportMap').addEventListener('click', () => {
   controls.forEach(c => c.style.display = 'none');
   map.resize();
 
-  // Overlay / crop (4:3)
+  // Overlay / crop (free move/resize could be added later; fixed 4:3 frame shown)
   const overlay = document.createElement('div');
   overlay.style.cssText = "position:fixed; inset:0; z-index:9999; pointer-events:none;";
+
   const box = document.createElement('div');
   Object.assign(box.style, {
-    position: "absolute", top: "50%", left: "50%", width: "80%", aspectRatio: "4/3",
-    transform: "translate(-50%, -50%)", border: "2px dashed #666",
-    pointerEvents: "none", boxSizing:'border-box'
+    position: "absolute",
+    top: "50%", left: "50%",
+    width: "80%",
+    aspectRatio: "4/3",
+    transform: "translate(-50%, -50%)",
+    border: "2px dashed #666",        // <-- we’ll subtract this in math below
+    boxSizing: "border-box",
+    pointerEvents: "none"
   });
   overlay.appendChild(box);
 
@@ -810,12 +789,23 @@ document.getElementById('exportMap').addEventListener('click', () => {
   });
   function makeBtn(txt){ const b=document.createElement('button'); b.textContent=txt; b.className='so-btn'; b.style.width='auto'; return b; }
   const confirmBtn = makeBtn("Confirm Export");
-  const cancelBtn = makeBtn("Cancel");
+  const cancelBtn  = makeBtn("Cancel");
   buttons.appendChild(confirmBtn); buttons.appendChild(cancelBtn);
   overlay.appendChild(buttons);
   document.body.appendChild(overlay);
 
   let exporting = false;
+
+  // Helper: wait for map to be fully painted or time out (prevents stuck “Exporting…”)
+  function waitForIdleOrTimeout(ms = 1000) {
+    return new Promise(resolve => {
+      let resolved = false;
+      const done = () => { if (!resolved) { resolved = true; resolve(); } };
+      const t = setTimeout(done, ms);
+      map.once('idle', () => { clearTimeout(t); done(); });
+      requestAnimationFrame(() => requestAnimationFrame(done)); // double RAF safety
+    });
+  }
 
   confirmBtn.onclick = async () => {
     if (exporting) return;
@@ -824,101 +814,96 @@ document.getElementById('exportMap').addEventListener('click', () => {
     confirmBtn.textContent = "Exporting…";
 
     try {
-      // Make sure we have a fresh paint; never wait forever
-      await waitForIdleOrTimeout(1200);
-      await twoFrames();
-
-      // Output canvas (fixed 4:3)
-      const OUT_W = 2048, OUT_H = 1536;
-      const exportCanvas = document.createElement('canvas');
-      exportCanvas.width = OUT_W; exportCanvas.height = OUT_H;
-      const ctx = exportCanvas.getContext('2d', { alpha: false });
-
-      // White background to fill any bands
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(0, 0, OUT_W, OUT_H);
+      await waitForIdleOrTimeout(1000);
 
       const mapCanvas = map.getCanvas();
-      const mapRect = mapCanvas.getBoundingClientRect();
-      const boxRect = box.getBoundingClientRect();
+      const mapRect   = mapCanvas.getBoundingClientRect();
+      const boxRect   = box.getBoundingClientRect();
 
-      // Convert crop rect (CSS px) -> map canvas px, snap & clamp
+      // Subtract the dashed border so we crop the INNER area only
+      const bw = parseFloat(getComputedStyle(box).borderTopWidth || '0') || 0;
+      const innerLeft   = boxRect.left   + bw;
+      const innerTop    = boxRect.top    + bw;
+      const innerRight  = boxRect.right  - bw;
+      const innerBottom = boxRect.bottom - bw;
+
+      // Convert CSS px -> map canvas px (device pixels)
       const cx = mapCanvas.width  / mapRect.width;
       const cy = mapCanvas.height / mapRect.height;
 
-      let sx = (boxRect.left - mapRect.left) * cx;
-      let sy = (boxRect.top  - mapRect.top)  * cy;
-      let sw = (boxRect.width)  * cx;
-      let sh = (boxRect.height) * cy;
+      // Crop in device pixels (avoid rounding that introduces thin bands)
+      const sx = (innerLeft   - mapRect.left) * cx;
+      const sy = (innerTop    - mapRect.top)  * cy;
+      const sw = (innerRight  - innerLeft)    * cx;
+      const sh = (innerBottom - innerTop)     * cy;
 
-      // Snap to pixel & clamp
-      sx = Math.floor(sx); sy = Math.floor(sy);
-      let ex = Math.ceil(sx + sw), ey = Math.ceil(sy + sh);
-      const maxW = mapCanvas.width, maxH = mapCanvas.height;
-      sx = Math.max(0, Math.min(sx, maxW)); sy = Math.max(0, Math.min(sy, maxH));
-      ex = Math.max(0, Math.min(ex, maxW)); ey = Math.max(0, Math.min(ey, maxH));
-      sw = Math.max(1, ex - sx); sh = Math.max(1, ey - sy);
+      // Create export canvas EXACTLY the crop size (no scaling, no letterbox)
+      const exportCanvas = document.createElement('canvas');
+      exportCanvas.width  = Math.max(1, Math.round(sw));
+      exportCanvas.height = Math.max(1, Math.round(sh));
+      const ctx = exportCanvas.getContext('2d', { alpha: false });
 
-      // Uniform scale to fit into OUT_W x OUT_H (letterbox; no stretch)
-      const scale = Math.min(OUT_W / sw, OUT_H / sh);
-      const dw = Math.round(sw * scale);
-      const dh = Math.round(sh * scale);
-      const dx0 = Math.round((OUT_W - dw) / 2);
-      const dy0 = Math.round((OUT_H - dh) / 2);
+      // Fill white (in case of fractional sampling at edges)
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
 
-      // Draw cropped map
+      // Draw the exact crop (no stretch)
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(mapCanvas, sx, sy, sw, sh, dx0, dy0, dw, dh);
+      ctx.drawImage(
+        mapCanvas,
+        sx, sy, sw, sh,
+        0, 0, exportCanvas.width, exportCanvas.height
+      );
 
-      // Legend capture & placement (same relative spot inside crop, then scaled + letterboxed)
+      // Draw legend at same relative position inside the crop
       const legendEl = document.getElementById('legend');
       if (legendEl && legendEl.style.display !== 'none') {
         const legendCanvas = await html2canvas(legendEl, { backgroundColor: null, scale: 2 });
         const lr = legendEl.getBoundingClientRect();
 
-        let lmx = (lr.left - boxRect.left) * cx;
-        let lmy = (lr.top  - boxRect.top)  * cy;
-        let lmw = lr.width  * cx;
-        let lmh = lr.height * cy;
+        // Legend pos relative to INNER crop box, then into device pixels
+        const ldx = (lr.left - innerLeft) * cx;
+        const ldy = (lr.top  - innerTop)  * cy;
+        const ldw = lr.width  * cx;
+        const ldh = lr.height * cy;
 
-        lmx = Math.round(lmx); lmy = Math.round(lmy);
-        lmw = Math.round(lmw); lmh = Math.round(lmh);
+        // Snap legend placement to integers to avoid blurring
+        const dx = Math.round(ldx);
+        const dy = Math.round(ldy);
+        const dw = Math.max(1, Math.round(ldw));
+        const dh = Math.max(1, Math.round(ldh));
 
-        const dx = dx0 + Math.round(lmx * scale);
-        const dy = dy0 + Math.round(lmy * scale);
-        const dw2 = Math.max(1, Math.round(lmw * scale));
-        const dh2 = Math.max(1, Math.round(lmh * scale));
-
-        ctx.drawImage(legendCanvas, 0, 0, legendCanvas.width, legendCanvas.height, dx, dy, dw2, dh2);
+        ctx.drawImage(legendCanvas, 0, 0, legendCanvas.width, legendCanvas.height, dx, dy, dw, dh);
       }
 
+      // Download
       const img = exportCanvas.toDataURL("image/png");
       const link = document.createElement('a');
-      link.href = img; link.download = "map-export-4x3.png"; link.click();
+      link.href = img;
+      link.download = "map-export-exact.png";
+      link.click();
+
+      cleanup();
     } catch (err) {
       console.error(err);
       alert('Export failed. Please try again.');
-    } finally {
-      // Always restore UI
-      document.body.removeChild(overlay);
-      panel.style.display = '';
-      controls.forEach(c => c.style.display = '');
-      map.resize();
-
-      exporting = false;
       confirmBtn.disabled = false;
       confirmBtn.textContent = "Confirm Export";
+      exporting = false;
     }
   };
 
-  cancelBtn.onclick = () => {
+  cancelBtn.onclick = () => cleanup();
+
+  function cleanup() {
     document.body.removeChild(overlay);
     panel.style.display = '';
     controls.forEach(c => c.style.display = '');
     map.resize();
-  };
+  }
 });
+
 
     // ===== Revert to Base Map =====
     document.getElementById('revertMap').addEventListener('click', () => {
@@ -963,4 +948,5 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
