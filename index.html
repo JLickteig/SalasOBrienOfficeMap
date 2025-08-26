@@ -552,7 +552,7 @@
     });
 
     function paletteColor(seed) {
-      const palette = ['#000086', '#16a34a', '#ea580c', '#2563eb', '#0ea5e9', '#f59e0b'];
+      const palette = ['#000086', '#E35920', '#00745C', '#5B0088', '#0ea5e9', '#f59e0b'];
       return palette[(seed - 1) % palette.length];
     }
     function normalizeHex(hex) { if (!hex) return '#000000'; return hex.length === 9 ? hex.slice(0, 7) : hex; }
@@ -625,12 +625,18 @@
       function applyColorToLayer(hex) {
   const normalized = normalizeHex(hex);
 
-  // Update the small preview button shown in the layer card
-  const btn = document.querySelector(`#picker-${layerId} .pcr-button`);
-  if (btn) btn.style.background = normalized;
+  // Update the small preview chip in the layer card
+  const chip = document.querySelector(`#picker-${layerId} .pcr-button`);
+  if (chip) chip.style.background = normalized;
 
-  // Set paint color
-  if (map.getLayer(circleLayerId)) map.setPaintProperty(circleLayerId, 'circle-color', normalized);
+  // Also update Pickr's internal button (some themes read from here)
+  const root = pickr.getRoot && pickr.getRoot();
+  if (root && root.button) root.button.style.background = normalized;
+
+  // Update the map layer color
+  if (map.getLayer(circleLayerId)) {
+    map.setPaintProperty(circleLayerId, 'circle-color', normalized);
+  }
 
   // Update current source data color
   const src = map.getSource(layerId);
@@ -640,7 +646,7 @@
     src.setData(live);
   }
 
-  // Update stored original for filtering coherence
+  // Keep stored original (for filtering) in sync
   const layer = uploadLayers.find(l => l.id === layerId);
   if (layer && layer.originalFC && layer.originalFC.features) {
     layer.originalFC.features.forEach(f => { f.properties.color = normalized; });
@@ -649,6 +655,7 @@
 
   updateLegend();
 }
+
 
 
       // Initialize preview & layer paint to default
@@ -1076,4 +1083,5 @@
   </script>
 </body>
 </html>
+
 
