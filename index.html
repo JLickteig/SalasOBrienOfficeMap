@@ -337,7 +337,7 @@
 
     // Segmented toggle for reach (OFFICES ONLY)
     const reachOnBtn = document.getElementById('reachOn');
-    const reachOffBtn = document.getElementById('reachOff');
+    aconst reachOffBtn = document.getElementById('reachOff');
     let reachEnabled = false;
     function setReach(enabled) {
       reachEnabled = enabled;
@@ -651,8 +651,7 @@
         el: `#picker-${layerId}`,
         theme: 'classic',
         default: defaultColor,
-        container: document.body,     // avoid clipping
-        // useAsButton REMOVED to restore .pcr-button rendering
+        container: document.body,  // avoid clipping
         components: { preview: true, opacity: false, hue: true, interaction: { hex: true, input: true, save: true } }
       });
 
@@ -683,14 +682,18 @@
       pickr.on('changestop', c => applyColorToLayer(c.toHEXA().toString()));
       pickr.on('save',       c => { applyColorToLayer(c.toHEXA().toString()); pickr.hide(); });
 
-      // Disable map interactions while picker is open (prevents "stuck drag")
+      // Make Pickr fully interactive: disable map interactions + pointer events while open
+      const mapCanvas = map.getCanvas();
       pickr.on('show', () => {
+        // disable gestures
         map.dragPan.disable();
         map.scrollZoom.disable();
         map.boxZoom.disable();
         map.dragRotate.disable();
         map.keyboard.disable();
         map.doubleClickZoom.disable();
+        // also stop the canvas from eating clicks
+        mapCanvas.style.pointerEvents = 'none';
       });
       pickr.on('hide', () => {
         map.dragPan.enable();
@@ -699,6 +702,7 @@
         map.dragRotate.enable();
         map.keyboard.enable();
         map.doubleClickZoom.enable();
+        mapCanvas.style.pointerEvents = ''; // restore
       });
 
       // Visibility toggle
@@ -990,14 +994,7 @@
     const legendObserver = new MutationObserver(() => updateLegend());
     legendObserver.observe(document.getElementById('uploadLayers'), { childList: true, subtree: true });
 
-    // Prevent Mapbox from capturing pointer events that start inside Pickr
-    ['pointerdown','mousedown','touchstart'].forEach(evt => {
-      document.addEventListener(evt, (e) => {
-        if (e.target.closest('.pcr-app') || e.target.closest('.pickr')) {
-          e.stopPropagation(); // capture so Mapbox never sees it
-        }
-      }, true);
-    });
+    // (Removed the global capture listener that blocked Pickr interaction)
   </script>
 </body>
 </html>
