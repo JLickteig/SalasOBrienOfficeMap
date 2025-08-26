@@ -746,12 +746,12 @@
       map.on('mouseleave', circleId, () => { map.getCanvas().style.cursor = ''; popup.remove(); });
     }
 
-// ===== Export (5:3, no zoom change, exact on-screen pixels) =====
+// ===== Export (fixed viewfinder; pan/zoom map underneath; exact 21.278:12.889) =====
 document.getElementById('exportMap').addEventListener('click', () => {
   const panel = document.getElementById('panel');
   const controls = document.querySelectorAll('.mapboxgl-ctrl');
 
-  // Keep layout identical: hide visually, not from layout (no zoom-out)
+  // Hide visually but keep layout (prevents any map reflow/zoom change)
   const prevPanelVis = panel.style.visibility;
   panel.style.visibility = 'hidden';
   const prevCtrlVis = [];
@@ -759,78 +759,86 @@ document.getElementById('exportMap').addEventListener('click', () => {
 
   // DO NOT call map.resize()
 
-  // Overlay with 5:3 aspect, use outline (doesn't change clientRect like border would)
+  // Fixed crop frame (exact ratio); overlay is click-through so map can pan/zoom
+  const TARGET_AR = 21.278 / 12.889; // ≈ 1.650865
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed; inset:0; z-index:9999; pointer-events:none;';
-  const box = document.createElement('div');
-  Object.assign(box.style, {
+  const frame = document.createElement('div');
+  Object.assign(frame.style, {
     position: 'absolute',
     top: '50%', left: '50%',
-    width: '80%',
-    aspectRatio: '5 / 3',
+    width: '80%',                 // initial width
+    aspectRatio: String(TARGET_AR),
     transform: 'translate(-50%, -50%)',
-    outline: '2px dashed #666',
+    outline: '2px dashed #666',   // outline doesn't affect client rect
     outlineOffset: '0',
-    pointerEvents: 'none',
+    pointerEvents: 'none',         // clicks go to the map
     boxSizing: 'border-box'
   });
-  overlay.appendChild(box);
+  overlay.appendChild(frame);
 
-  // Helper label
-  const label = document.createElement('div');
-  label.textContent = 'Drag to reposition • Mouse wheel to resize';
-  Object.assign(label.style, {
+  const hint = document.createElement('div');
+  hint.textContent = 'Pan/zoom the map to compose. Resize frame with the slider.';
+  Object.assign(hint.style, {
     position: 'absolute', top: '15px', left: '50%', transform: 'translateX(-50%)',
     fontSize: '14px', color: '#fff', background: 'rgba(0,0,0,0.6)',
     padding: '6px 12px', borderRadius: '4px', pointerEvents: 'none'
   });
-  overlay.appendChild(label);
+  overlay.appendChild(hint);
 
-  // Buttons
-  const buttons = document.createElement('div');
-  Object.assign(buttons.style, {
+  // Controls container (can receive pointer events)
+  const controlsWrap = document.createElement('div');
+  Object.assign(controlsWrap.style, {
     position: 'absolute', bottom: '20px', right: '20px',
-    display: 'flex', gap: '12px', pointerEvents: 'auto'
+    display: 'flex', gap: '12px', alignItems: 'center',
+    pointerEvents: 'auto'
   });
+
+  // Size slider (changes frame width %, stays centered)
+  const sizeLabel = document.createElement('span');
+  sizeLabel.textContent = 'Frame size';
+  sizeLabel.style.color = '#fff';
+  sizeLabel.style.fontSize = '13px';
+
+  const sizeSlider = document.createElement('input');
+  sizeSlider.type = 'range';
+  sizeSlider.min = '30';  // 30% of viewport width
+  sizeSlider.max = '95';
+  sizeSlider.value = '80';
+  sizeSlider.step = '1';
+  sizeSlider.style.width = '160px';
+  sizeSlider.oninput = () => { frame.style.width = sizeSlider.value + '%'; };
+
   function makeBtn(txt){ const b=document.createElement('button'); b.textContent=txt; b.className='so-btn'; b.style.width='auto'; return b; }
   const confirmBtn = makeBtn('Confirm Export');
   const cancelBtn  = makeBtn('Cancel');
-  buttons.appendChild(confirmBtn);
-  buttons.appendChild(cancelBtn);
-  overlay.appendChild(buttons);
 
-  // Simple move + resize of the crop box (no layout change)
-  let dragging=false, startX=0, startY=0, startLeft=0, startTop=0;
-  overlay.style.pointerEvents = 'auto';
-  box.style.pointerEvents = 'auto';
-
-  box.addEventListener('mousedown', (e) => {
-    dragging = true;
-    startX = e.clientX; startY = e.clientY;
-    const r = box.getBoundingClientRect();
-    startLeft = r.left + r.width/2;
-    startTop  = r.top  + r.height/2;
-    e.preventDefault();
-  });
-  window.addEventListener('mousemove', (e) => {
-    if (!dragging) return;
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
-    box.style.left = (startLeft + dx) + 'px';
-    box.style.top  = (startTop  + dy) + 'px';
-  });
-  window.addEventListener('mouseup', () => { dragging=false; });
-  // Wheel to resize width (keeps 5:3 via aspect-ratio)
-  overlay.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    const r = box.getBoundingClientRect();
-    const newW = Math.max(200, r.width * (e.deltaY < 0 ? 1.05 : 0.95));
-    box.style.width = newW + 'px';
-  }, { passive:false });
-
+  controlsWrap.appendChild(sizeLabel);
+  controlsWrap.appendChild(sizeSlider);
+  controlsWrap.appendChild(confirmBtn);
+  controlsWrap.appendChild(cancelBtn);
+  overlay.appendChild(controlsWrap);
   document.body.appendChild(overlay);
 
   let exporting = false;
+
+  // Robust paint waiter: never hang on idle
+  async function waitForMapQuiet(timeoutMs = 1200) {
+    // If user is moving the map, wait for moveend (with timeout)
+    if (map.isMoving()) {
+      await Promise.race([
+        new Promise(res => map.once('moveend', res)),
+        new Promise(res => setTimeout(res, timeoutMs))
+      ]);
+    }
+    // Give the renderer 2 RAFs
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    // Try idle, but don't block forever
+    await Promise.race([
+      new Promise(res => map.once('idle', res)),
+      new Promise(res => setTimeout(res, 300)) // short fallback
+    ]);
+  }
 
   confirmBtn.onclick = async () => {
     if (exporting) return;
@@ -839,25 +847,22 @@ document.getElementById('exportMap').addEventListener('click', () => {
     confirmBtn.textContent = 'Exporting…';
 
     try {
-      // Make sure map finished painting
-      await new Promise(r => map.once('idle', r));
-      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      await waitForMapQuiet();
 
       const mapCanvas = map.getCanvas();
       const mapRect   = mapCanvas.getBoundingClientRect();
-      const boxRect   = box.getBoundingClientRect();
+      const boxRect   = frame.getBoundingClientRect();
 
-      // CSS px -> canvas px
+      // Convert frame rect (CSS px) -> map canvas px
       const cx = mapCanvas.width  / mapRect.width;
       const cy = mapCanvas.height / mapRect.height;
 
-      // Crop area in canvas pixels
       let sx = (boxRect.left - mapRect.left) * cx;
       let sy = (boxRect.top  - mapRect.top ) * cy;
       let sw = boxRect.width  * cx;
       let sh = boxRect.height * cy;
 
-      // Snap & clamp to avoid 1px transparent slivers
+      // Snap to whole device pixels & clamp to canvas bounds (kill 1px bands)
       sx = Math.max(0, Math.floor(sx));
       sy = Math.max(0, Math.floor(sy));
       const ex = Math.min(mapCanvas.width,  Math.ceil(sx + sw));
@@ -865,22 +870,23 @@ document.getElementById('exportMap').addEventListener('click', () => {
       sw = Math.max(1, ex - sx);
       sh = Math.max(1, ey - sy);
 
-      // Export canvas EXACTLY the crop size (no scaling, no letterbox, no stretch)
+      // Create export canvas EXACTLY at crop size (no stretch/letterbox)
       const exportCanvas = document.createElement('canvas');
       exportCanvas.width = sw;
       exportCanvas.height = sh;
       const ctx = exportCanvas.getContext('2d', { alpha: false });
       ctx.imageSmoothingEnabled = false;
+
+      // Draw the cropped map
       ctx.drawImage(mapCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
 
-      // Draw legend at the same spot relative to the crop
+      // Draw legend in-place relative to the crop
       const legendEl = document.getElementById('legend');
       if (legendEl && legendEl.style.display !== 'none') {
         const dpr = window.devicePixelRatio || 1;
         const legendCanvas = await html2canvas(legendEl, { backgroundColor: null, scale: dpr });
         const lr = legendEl.getBoundingClientRect();
 
-        // Legend position inside the crop (canvas px)
         let lmx = (lr.left - boxRect.left) * cx;
         let lmy = (lr.top  - boxRect.top ) * cy;
         let lmw =  lr.width * cx;
@@ -892,11 +898,10 @@ document.getElementById('exportMap').addEventListener('click', () => {
         ctx.drawImage(legendCanvas, 0, 0, legendCanvas.width, legendCanvas.height, lmx, lmy, lmw, lmh);
       }
 
-      // Save
       const url = exportCanvas.toDataURL('image/png');
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'map-export-5x3.png';
+      a.download = 'map-export-21.278x12.889-ratio.png';
       a.click();
 
       cleanup();
@@ -918,6 +923,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
     exporting = false;
   }
 });
+
 
 
 
@@ -964,6 +970,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
