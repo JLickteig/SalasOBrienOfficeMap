@@ -54,6 +54,7 @@
       padding: 12px;
       margin-bottom: 12px;
       background: #fff;
+      overflow: visible; /* keep Pickr popup from clipping if container=panel */
     }
     .section-title {
       font-weight: 600;
@@ -108,7 +109,6 @@
       padding: 10px 12px; cursor: pointer; background: #f8fafc;
       font-weight: 600; font-size: 14px;
     }
-    /* Right-triangle caret (#009de0), 90° at bottom-right; rotates 45° on expand */
     .chev {
       width: 12px; height: 12px; background: var(--brand);
       clip-path: polygon(100% 100%, 100% 0, 0 100%);
@@ -124,42 +124,21 @@
     select { width: 100%; min-height: 160px; font-size: 13px; }
     .muted { color: var(--muted); font-size: 12px; }
 
-    /* File input button — match your buttons but smaller text */
-    input[type="file"] {
-      width: 100%;
-      font-size: 13px;
-    }
+    /* File input button */
+    input[type="file"] { width: 100%; font-size: 13px; }
     input[type="file"]::file-selector-button {
-      font-size: 12px;
-      font-weight: 600;
-      color: #000;
-      background: #fff;
-      border: 2px solid var(--brand);
-      border-radius: 999px;
-      padding: 6px 12px;
-      margin-right: 10px;
-      cursor: pointer;
+      font-size: 12px; font-weight: 600; color: #000; background: #fff;
+      border: 2px solid var(--brand); border-radius: 999px; padding: 6px 12px; margin-right: 10px; cursor: pointer;
       transition: background .15s, color .15s;
     }
     input[type="file"]::file-selector-button:hover { background: var(--brand); color: #fff; }
 
     /* Layer cards */
-    .layer-card {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 10px;
-      margin-bottom: 10px;
-      background: #fff;
-      overflow: hidden;
-    }
+    .layer-card { border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 10px; background: #fff; overflow: visible; }
     .layer-card * { max-width: 100%; }
-    .layer-header {
-      display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px;
-    }
+    .layer-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
     .layer-meta { display: flex; align-items: center; gap: 8px; min-width: 0; }
-    .layer-name-input {
-      border:1px solid #e5e7eb; border-radius:8px; padding:6px 8px; width: 180px; min-width: 0;
-    }
+    .layer-name-input { border:1px solid #e5e7eb; border-radius:8px; padding:6px 8px; width: 180px; min-width: 0; }
     .layer-actions { display: flex; align-items: center; gap: 8px; }
     .icon-btn { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; cursor: pointer; }
     .icon-btn:hover { background: #f3f4f6; }
@@ -182,22 +161,13 @@
       z-index: 4;
       max-width: min(90%, 900px);
     }
-    .map-legend h4 {
-      margin: 0 0 6px 0; font-size: 13px; font-weight: 700; color: #111; text-align:center;
-    }
-    /* HORIZONTAL legend layout */
-    #legendItems {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 10px 16px;
-    }
+    .map-legend h4 { margin: 0 0 6px 0; font-size: 13px; font-weight: 700; color: #111; text-align:center; }
+    #legendItems { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px 16px; }
     .legend-item { display: inline-flex; align-items: center; gap: 6px; }
     .legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid #999; display: inline-block; }
 
-    /* Ensure Pickr popup floats above everything */
-    .pcr-app { z-index: 9999; }
+    /* Ensure Pickr popup sits above shield and everything else */
+    .pcr-app { z-index: 10002; }
   </style>
 </head>
 <body>
@@ -561,7 +531,7 @@
       // Rebuild items
       itemsEl.innerHTML = '';
 
-      // Always include Offices once legend is shown
+      // Always include Salas O'Brien Offices once legend is shown
       addLegendItem(itemsEl, '#009de0', "Salas O'Brien Offices");
 
       // Include all visible user layers
@@ -603,6 +573,25 @@
       return hex;
     }
 
+    // --- Interaction shield so Pickr doesn't "stick" ---
+    let __shield = null;
+    function showInteractionShield() {
+      if (__shield) return;
+      __shield = document.createElement('div');
+      Object.assign(__shield.style, {
+        position: 'fixed',
+        inset: '0',
+        zIndex: '10001',   // below .pcr-app (10002), above everything else
+        cursor: 'default'
+      });
+      document.body.appendChild(__shield);
+    }
+    function hideInteractionShield() {
+      if (!__shield) return;
+      __shield.remove();
+      __shield = null;
+    }
+
     function addUploadLayer() {
       const index = ++layerCount;
       const layerId = `uploaded-layer-${index}`;
@@ -610,7 +599,7 @@
       const defaultColor = paletteColor(index);
       const statusId = `status-${layerId}`;
 
-      // UI Card (no preview chip in header)
+      // UI Card
       const card = document.createElement('div');
       card.className = 'layer-card';
       card.id = `card-${layerId}`;
@@ -646,22 +635,17 @@
         paint: { 'circle-radius': 6, 'circle-color': defaultColor }
       });
 
-      // Color picker (creates its own .pcr-button inside the element)
+      // Color picker
       const pickr = Pickr.create({
         el: `#picker-${layerId}`,
         theme: 'classic',
         default: defaultColor,
-        container: document.body,  // avoid clipping
-        components: { preview: true, opacity: false, hue: true, interaction: { hex: true, input: true, save: true } }
+        container: document.body,  // allow popup to escape panel
+        components: { preview: true, opacity: false, hue: true, interaction: { hex: true, input: true, save: true, cancel: true } }
       });
 
-      // Ensure initial UI shows defaultColor and stays in sync
-      pickr.on('init', () => {
-        const hex = normalizeHex(pickr.getColor().toHEXA().toString() || defaultColor);
-        const btn = document.querySelector(`#picker-${layerId} .pcr-button`);
-        if (btn) btn.style.background = hex;
-        if (map.getLayer(circleLayerId)) map.setPaintProperty(circleLayerId, 'circle-color', hex);
-      });
+      // --- Pickr wiring with gating so it never updates after closing ---
+      let isPicking = false;
 
       function applyColorToLayer(hex) {
         const normalized = normalizeHex(hex);
@@ -677,33 +661,58 @@
         updateLegend();
       }
 
-      // Live updates + robust end-of-drag/save updates
-      pickr.on('change',     c => applyColorToLayer(c.toHEXA().toString()));
-      pickr.on('changestop', c => applyColorToLayer(c.toHEXA().toString()));
-      pickr.on('save',       c => { applyColorToLayer(c.toHEXA().toString()); pickr.hide(); });
-
-      // Make Pickr fully interactive: disable map interactions + pointer events while open
-      const mapCanvas = map.getCanvas();
-      pickr.on('show', () => {
-        // disable gestures
-        map.dragPan.disable();
-        map.scrollZoom.disable();
-        map.boxZoom.disable();
-        map.dragRotate.disable();
-        map.keyboard.disable();
-        map.doubleClickZoom.disable();
-        // also stop the canvas from eating clicks
-        mapCanvas.style.pointerEvents = 'none';
+      // Initial button color sync
+      pickr.on('init', () => {
+        const hex = normalizeHex(pickr.getColor().toHEXA().toString() || defaultColor);
+        const btn = document.querySelector(`#picker-${layerId} .pcr-button`);
+        if (btn) btn.style.background = hex;
+        if (map.getLayer(circleLayerId)) map.setPaintProperty(circleLayerId, 'circle-color', hex);
       });
-      pickr.on('hide', () => {
+
+      // Only react to changes while open
+      pickr.on('change', (c) => {
+        if (!isPicking) return;
+        applyColorToLayer(c.toHEXA().toString());
+      });
+
+      // Open/close: control gesture blocking and gating
+      const mapCanvas = map.getCanvas();
+
+      function restoreAfterPickr() {
+        hideInteractionShield();
         map.dragPan.enable();
         map.scrollZoom.enable();
         map.boxZoom.enable();
         map.dragRotate.enable();
         map.keyboard.enable();
         map.doubleClickZoom.enable();
-        mapCanvas.style.pointerEvents = ''; // restore
+        mapCanvas.style.pointerEvents = ''; // ensure restored
+      }
+
+      pickr.on('show', () => {
+        isPicking = true;            // start live updates
+        showInteractionShield();     // block the map from stealing mouseup
+        // disable map gestures
+        map.dragPan.disable();
+        map.scrollZoom.disable();
+        map.boxZoom.disable();
+        map.dragRotate.disable();
+        map.keyboard.disable();
+        map.doubleClickZoom.disable();
+        mapCanvas.style.pointerEvents = ''; // shield handles blocking
       });
+
+      // Finalize + close
+      pickr.on('save', (c) => {
+        applyColorToLayer(c.toHEXA().toString()); // final apply
+        isPicking = false;
+        restoreAfterPickr();
+        pickr.hide();
+      });
+
+      // Close/cancel without applying further
+      pickr.on('hide', () => { isPicking = false; restoreAfterPickr(); });
+      pickr.on('cancel', () => { isPicking = false; restoreAfterPickr(); });
 
       // Visibility toggle
       let visible = true;
@@ -875,19 +884,23 @@
       document.body.appendChild(overlay);
 
       confirmBtn.onclick = async () => {
-        const exportCanvas = document.createElement('canvas');
-        exportCanvas.width = 2048; exportCanvas.height = 1536;
-        const ctx = exportCanvas.getContext('2d');
-        const mapCanvas = map.getCanvas();
+        // Wait for map to fully paint so there are no transparent bands
+        await new Promise(r => map.once('idle', r));
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); // extra paint safety
 
+        const exportCanvas = document.createElement('canvas');
+        exportCanvas.width = 2048; exportCanvas.height = 1536; // 4:3
+        const ctx = exportCanvas.getContext('2d', { alpha: false });
+
+        const mapCanvas = map.getCanvas();
         const mapRect = mapCanvas.getBoundingClientRect();
         const boxRect = box.getBoundingClientRect();
 
-        // Map device pixel ratio scaling
+        // CSS px -> canvas px scaling
         const cx = mapCanvas.width  / mapRect.width;
         const cy = mapCanvas.height / mapRect.height;
 
-        // Crop region in map canvas pixels
+        // Crop region in map canvas pixels (exactly what user framed)
         const sx = (boxRect.left - mapRect.left) * cx;
         const sy = (boxRect.top  - mapRect.top)  * cy;
         const sw = boxRect.width  * cx;
@@ -899,11 +912,10 @@
         // Draw legend at same relative position inside the crop
         const legendEl = document.getElementById('legend');
         if (legendEl && legendEl.style.display !== 'none') {
-          // Screenshot legend
           const legendCanvas = await html2canvas(legendEl, { backgroundColor: null, scale: 2 });
           const lr = legendEl.getBoundingClientRect();
 
-          // Position legend relative to the crop box (convert CSS px -> map canvas px -> export px)
+          // Convert legend rect relative to the crop box into export px
           const scaleX = exportCanvas.width  / sw;
           const scaleY = exportCanvas.height / sh;
 
@@ -993,11 +1005,6 @@
     // Legend auto-refresh if DOM changes in upload area
     const legendObserver = new MutationObserver(() => updateLegend());
     legendObserver.observe(document.getElementById('uploadLayers'), { childList: true, subtree: true });
-
-    // (Removed the global capture listener that blocked Pickr interaction)
   </script>
 </body>
 </html>
-
-
-
