@@ -109,11 +109,7 @@
       padding: 10px 12px; cursor: pointer; background: #f8fafc;
       font-weight: 600; font-size: 14px;
     }
-    .chev {
-      width: 12px; height: 12px; background: var(--brand);
-      clip-path: polygon(100% 100%, 100% 0, 0 100%);
-      transition: transform .15s; transform-origin: 50% 50%;
-    }
+    .chev { width: 12px; height: 12px; background: var(--brand); clip-path: polygon(100% 100%, 100% 0, 0 100%); transition: transform .15s; transform-origin: 50% 50%; }
     .accordion-header[aria-expanded="true"] .chev { transform: rotate(45deg); }
     .accordion-body { display: none; padding: 10px; }
     .accordion-header[aria-expanded="true"] + .accordion-body { display: block; }
@@ -166,7 +162,6 @@
     .legend-item { display: inline-flex; align-items: center; gap: 6px; }
     .legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid #999; display: inline-block; }
 
-    /* Ensure Pickr popup sits above shield and everything else */
     .pcr-app { z-index: 10002; }
   </style>
 </head>
@@ -289,13 +284,13 @@
     let originalGeojson = null;
     const OFFICE_SOURCE = 'offices';
     const OFFICE_LAYER = 'offices-layer';
-    const HALO_OFFICES_SOURCE = 'halo-offices'; // offices-only halos
+    const HALO_OFFICES_SOURCE = 'halo-offices';
     const HALO_OFFICES_FILL = 'halo-offices-fill';
 
     // Upload layers state
     const MAX_LAYERS = 3;
     let layerCount = 0;
-    const uploadLayers = []; // { id, nameInputId, sourceId, circleLayerId, pickr, get visible(){} }
+    const uploadLayers = [];
 
     // Accordion behavior
     document.querySelectorAll('.accordion-header').forEach(h => {
@@ -335,12 +330,7 @@
         map.addSource(sourceId, { type: 'geojson', data: emptyFC() });
       }
       if (!map.getLayer(layerId)) {
-        map.addLayer({
-          id: layerId,
-          type: 'fill',
-          source: sourceId,
-          paint: { 'fill-color': color, 'fill-opacity': 0.2 } // opacity 0.2
-        }, beforeLayerId);
+        map.addLayer({ id: layerId, type: 'fill', source: sourceId, paint: { 'fill-color': color, 'fill-opacity': 0.2 } }, beforeLayerId);
       }
     }
     function setHaloData(sourceId, fc) {
@@ -352,7 +342,7 @@
     async function fetchIsochronePolygon(lng, lat) {
       const key = `${lng.toFixed(6)},${lat.toFixed(6)}`;
       if (isoCache.has(key)) return isoCache.get(key);
-      const url = `https://api.mapbox.com/isochrone/v1/mapbox/${ISOCHRONE_PROFILE}/${lng},${lat}?contours_minutes=${ISOCHRONE_MINUTES}&polygons=true&generalize=10&access_token=${mapboxgl.accessToken}`;
+      const url = `https://api.mapbox.com/isochrone/v1/mapbox/${'driving'}/${lng},${lat}?contours_minutes=${ISOCHRONE_MINUTES}&polygons=true&generalize=10&access_token=${mapboxgl.accessToken}`;
       try {
         const res = await fetch(url);
         if (!res.ok) throw new Error('Isochrone fetch failed');
@@ -392,48 +382,26 @@
 
     // HTML helpers for popups
     function escapeHTML(s='') {
-      return String(s)
-        .replace(/&/g,'&amp;')
-        .replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;')
-        .replace(/"/g,'&quot;')
-        .replace(/'/g,'&#39;');
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     }
-    function nl2br(s='') {
-      // handle both real newlines and literal "\n"
-      return escapeHTML(s).replace(/\\n|\r\n|\r|\n/g, '<br>');
-    }
+    function nl2br(s='') { return escapeHTML(s).replace(/\\n|\r\n|\r|\n/g, '<br>'); }
 
     // Map load
     map.on('load', async () => {
       try {
-        // base data
         const datasetUrl = 'https://api.mapbox.com/datasets/v1/jacquelickteig/cmehl5mrh2qmv1nkae937qkrh/features?access_token=' + mapboxgl.accessToken;
         const res = await fetch(datasetUrl);
         originalGeojson = await res.json();
 
-        // offices points
         map.addSource(OFFICE_SOURCE, { type: 'geojson', data: originalGeojson });
-        map.addLayer({
-          id: OFFICE_LAYER,
-          type: 'circle',
-          source: OFFICE_SOURCE,
-          paint: { 'circle-radius': 6, 'circle-color': '#009de0' }
-        });
+        map.addLayer({ id: OFFICE_LAYER, type: 'circle', source: OFFICE_SOURCE, paint: { 'circle-radius': 6, 'circle-color': '#009de0' } });
 
-        // halo layer (OFFICES ONLY; no borders)
         ensureFillLayer(HALO_OFFICES_SOURCE, HALO_OFFICES_FILL, '#009de0', OFFICE_LAYER);
 
-        // build filters & popups
         buildFilters(originalGeojson);
         wireOfficePopups();
-
-        // reach initial state
         setReach(false);
-
-        // legend init (hidden until user adds a layer)
         updateLegend();
-
       } catch (e) {
         console.error('Error loading dataset:', e);
       }
@@ -444,7 +412,6 @@
       const regionSelect = document.getElementById('regionFilter');
       const buSelect = document.getElementById('buFilter');
 
-      // clear
       regionSelect.innerHTML = '';
       buSelect.innerHTML = '';
 
@@ -452,12 +419,10 @@
       const provinces = [...new Set(gj.features.filter(f => f.properties.country === 'CAN').map(f => f.properties.state).filter(Boolean))].sort();
       const bus = [...new Set(gj.features.map(f => f.properties.bu).filter(Boolean))].sort();
 
-      const caGroup = document.createElement('optgroup');
-      caGroup.label = 'Canada';
+      const caGroup = document.createElement('optgroup'); caGroup.label = 'Canada';
       provinces.forEach(p => { const o = document.createElement('option'); o.value = 'CAN|'+p; o.textContent = p; caGroup.appendChild(o); });
 
-      const usGroup = document.createElement('optgroup');
-      usGroup.label = 'United States';
+      const usGroup = document.createElement('optgroup'); usGroup.label = 'United States';
       states.forEach(s => { const o = document.createElement('option'); o.value = 'US|'+s; o.textContent = s; usGroup.appendChild(o); });
 
       regionSelect.appendChild(caGroup);
@@ -484,7 +449,6 @@
           })
         };
         map.getSource(OFFICE_SOURCE).setData(filtered);
-
         if (reachEnabled) await rebuildOfficeHalos(filtered);
       }
 
@@ -511,17 +475,14 @@
         const phone      = nl2br(p.phone || '');
         const bu         = nl2br(p.bu || '');
 
-        popup
-          .setLngLat(e.features[0].geometry.coordinates)
-          .setHTML(
-            `<div style="line-height:1.1;">
-              <div style="font-weight:bold; color:#009DE0; margin:0;">${officeName}</div>
-              <div style="font-size:11px; color:#333; margin:0;">${address}</div>
-              <div style="font-size:11px; color:#666; margin:0;">${phone}</div>
-              <div style="font-size:11px; color:#666; margin:0;">${bu}</div>
-            </div>`
-          )
-          .addTo(map);
+        popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
+          `<div style="line-height:1.1;">
+            <div style="font-weight:bold; color:#009DE0; margin:0;">${officeName}</div>
+            <div style="font-size:11px; color:#333; margin:0;">${address}</div>
+            <div style="font-size:11px; color:#666; margin:0;">${phone}</div>
+            <div style="font-size:11px; color:#666; margin:0;">${bu}</div>
+          </div>`
+        ).addTo(map);
       });
       map.on('mouseleave', OFFICE_LAYER, () => { map.getCanvas().style.cursor = ''; popup.remove(); });
     }
@@ -547,16 +508,9 @@
         itemsEl.innerHTML = '';
         return;
       }
-
-      legendEl.style.display = ''; // show
-
-      // Rebuild items
+      legendEl.style.display = '';
       itemsEl.innerHTML = '';
-
-      // Always include Salas O'Brien Offices once legend is shown
       addLegendItem(itemsEl, '#009de0', "Salas O'Brien Offices");
-
-      // Include all visible user layers
       for (const l of uploadLayers) {
         if (!l.visible) continue;
         const color = l.pickr.getColor().toHEXA().toString();
@@ -584,35 +538,20 @@
     });
 
     function paletteColor(seed) {
-      const palette = ['#000086', '#16a34a', '#ea580c', '#2563eb', '#0ea5e9', '#f59e0b']; // first = #000086
+      const palette = ['#000086', '#16a34a', '#ea580c', '#2563eb', '#0ea5e9', '#f59e0b'];
       return palette[(seed - 1) % palette.length];
     }
-
-    // Normalize Pickr output → 6-digit hex (#RRGGBB)
-    function normalizeHex(hex) {
-      if (!hex) return '#000000';
-      if (hex.length === 9) return hex.slice(0, 7); // strip alpha
-      return hex;
-    }
+    function normalizeHex(hex) { if (!hex) return '#000000'; return hex.length === 9 ? hex.slice(0, 7) : hex; }
 
     // --- Interaction shield for color picker ---
     let __shield = null;
     function showInteractionShield() {
       if (__shield) return;
       __shield = document.createElement('div');
-      Object.assign(__shield.style, {
-        position: 'fixed',
-        inset: '0',
-        zIndex: '10001',   // below .pcr-app (10002)
-        cursor: 'default'
-      });
+      Object.assign(__shield.style, { position:'fixed', inset:'0', zIndex:'10001', cursor:'default' });
       document.body.appendChild(__shield);
     }
-    function hideInteractionShield() {
-      if (!__shield) return;
-      __shield.remove();
-      __shield = null;
-    }
+    function hideInteractionShield() { if (!__shield) return; __shield.remove(); __shield = null; }
 
     function addUploadLayer() {
       const index = ++layerCount;
@@ -621,7 +560,6 @@
       const defaultColor = paletteColor(index);
       const statusId = `status-${layerId}`;
 
-      // UI Card
       const card = document.createElement('div');
       card.className = 'layer-card';
       card.id = `card-${layerId}`;
@@ -648,16 +586,9 @@
       `;
       uploadLayersContainer.appendChild(card);
 
-      // Map source & layer
       map.addSource(layerId, { type:'geojson', data: emptyFC() });
-      map.addLayer({
-        id: circleLayerId,
-        type: 'circle',
-        source: layerId,
-        paint: { 'circle-radius': 6, 'circle-color': defaultColor }
-      });
+      map.addLayer({ id: circleLayerId, type: 'circle', source: layerId, paint: { 'circle-radius': 6, 'circle-color': defaultColor } });
 
-      // Color picker
       const pickr = Pickr.create({
         el: `#picker-${layerId}`,
         theme: 'classic',
@@ -666,9 +597,7 @@
         components: { preview: true, opacity: false, hue: true, interaction: { hex: true, input: true, save: true, cancel: true } }
       });
 
-      // --- Pickr wiring (no sticky drags / no ghost updates) ---
       let isPicking = false;
-
       function applyColorToLayer(hex) {
         const normalized = normalizeHex(hex);
         const pickerButton = document.querySelector(`#picker-${layerId} .pcr-button`);
@@ -689,46 +618,27 @@
         if (btn) btn.style.background = hex;
         if (map.getLayer(circleLayerId)) map.setPaintProperty(circleLayerId, 'circle-color', hex);
       });
-
-      pickr.on('change', (c) => {
-        if (!isPicking) return;
-        applyColorToLayer(c.toHEXA().toString());
-      });
+      pickr.on('change', (c) => { if (!isPicking) return; applyColorToLayer(c.toHEXA().toString()); });
 
       const mapCanvas = map.getCanvas();
       function restoreAfterPickr() {
         hideInteractionShield();
-        map.dragPan.enable();
-        map.scrollZoom.enable();
-        map.boxZoom.enable();
-        map.dragRotate.enable();
-        map.keyboard.enable();
-        map.doubleClickZoom.enable();
+        map.dragPan.enable(); map.scrollZoom.enable(); map.boxZoom.enable();
+        map.dragRotate.enable(); map.keyboard.enable(); map.doubleClickZoom.enable();
         mapCanvas.style.pointerEvents = '';
       }
 
       pickr.on('show', () => {
         isPicking = true;
         showInteractionShield();
-        map.dragPan.disable();
-        map.scrollZoom.disable();
-        map.boxZoom.disable();
-        map.dragRotate.disable();
-        map.keyboard.disable();
-        map.doubleClickZoom.disable();
+        map.dragPan.disable(); map.scrollZoom.disable(); map.boxZoom.disable();
+        map.dragRotate.disable(); map.keyboard.disable(); map.doubleClickZoom.disable();
         mapCanvas.style.pointerEvents = '';
       });
-
-      pickr.on('save', (c) => {
-        applyColorToLayer(c.toHEXA().toString());
-        isPicking = false;
-        restoreAfterPickr();
-        pickr.hide();
-      });
+      pickr.on('save', (c) => { applyColorToLayer(c.toHEXA().toString()); isPicking = false; restoreAfterPickr(); pickr.hide(); });
       pickr.on('cancel', () => { isPicking = false; restoreAfterPickr(); });
       pickr.on('hide',   () => { isPicking = false; restoreAfterPickr(); });
 
-      // Visibility toggle
       let visible = true;
       document.getElementById(`toggle-${layerId}`).addEventListener('click', () => {
         visible = !visible;
@@ -736,39 +646,22 @@
         updateLegend();
       });
 
-      // Remove layer
       document.getElementById(`remove-${layerId}`).addEventListener('click', () => {
-        // UI
         card.remove();
-        // Map
         if (map.getLayer(circleLayerId)) map.removeLayer(circleLayerId);
         if (map.getSource(layerId)) map.removeSource(layerId);
-        // State
         const idx = uploadLayers.findIndex(l => l.id === layerId);
         if (idx >= 0) uploadLayers.splice(idx, 1);
-        layerCount--;
-        addLayerBtn.disabled = false;
-        updateLegend();
+        layerCount--; addLayerBtn.disabled = false; updateLegend();
       });
 
-      // Name input -> legend updates
       document.getElementById(`name-${layerId}`).addEventListener('input', updateLegend);
 
-      // File upload
       const fileInput = document.getElementById(`file-${layerId}`);
       const perLayerStatus = document.getElementById(statusId);
       fileInput.addEventListener('change', (e) => handleCSVUpload(e, layerId, pickr, perLayerStatus));
 
-      // Track
-      uploadLayers.push({
-        id: layerId,
-        sourceId: layerId,
-        circleLayerId,
-        nameInputId: `name-${layerId}`,
-        pickr,
-        get visible() { return visible; }
-      });
-
+      uploadLayers.push({ id: layerId, sourceId: layerId, circleLayerId, nameInputId: `name-${layerId}`, pickr, get visible() { return visible; } });
       updateLegend();
     }
 
@@ -798,9 +691,8 @@
                   lat = data.results[0].geometry.location.lat;
                   lng = data.results[0].geometry.location.lng;
                 }
-              } catch (err) {
-                console.error("Geocoding failed for:", row.ADDRESS, err);
-              }
+              } catch (err) { console.error("Geocoding failed for:", row.ADDRESS, err); }
+
             }
 
             if (isFinite(lat) && isFinite(lng)) {
@@ -829,10 +721,7 @@
           const uploadedGeojson = { type:"FeatureCollection", features };
           const src = map.getSource(layerId);
           if (src) src.setData(uploadedGeojson);
-
-          // Popups for this layer (with Alt+Enter -> <br>)
           wireUploadLayerPopups(layerId);
-
           updateLegend();
         },
         error: function(err) {
@@ -857,7 +746,7 @@
       map.on('mouseleave', circleId, () => { map.getCanvas().style.cursor = ''; popup.remove(); });
     }
 
-    // ===== Export (crop to dashed box + legend at same on-screen position, no banding) =====
+    // ===== Export (letterbox, no stretch, legend drawn, single click) =====
     document.getElementById('exportMap').addEventListener('click', () => {
       const panel = document.getElementById('panel');
       const controls = document.querySelectorAll('.mapboxgl-ctrl');
@@ -873,7 +762,7 @@
       const box = document.createElement('div');
       Object.assign(box.style, {
         position: "absolute", top: "50%", left: "50%", width: "80%", aspectRatio: "4/3",
-        transform: "translate(-50%, -50%)", border: "2px dashed #666", pointerEvents: "none"
+        transform: "translate(-50%, -50%)", border: "2px dashed #666", pointerEvents: "none", boxSizing:'border-box'
       });
       overlay.appendChild(box);
 
@@ -898,80 +787,95 @@
       overlay.appendChild(buttons);
       document.body.appendChild(overlay);
 
+      let exporting = false;
+
       confirmBtn.onclick = async () => {
-        // Wait for map to fully paint so there are no transparent bands
-        await new Promise(r => map.once('idle', r));
-        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+        if (exporting) return;
+        exporting = true;
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = "Exporting…";
+        try {
+          // Ensure map fully painted
+          await new Promise(r => map.once('idle', r));
+          await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-        const exportCanvas = document.createElement('canvas');
-        exportCanvas.width = 2048; exportCanvas.height = 1536; // 4:3
-        const ctx = exportCanvas.getContext('2d', { alpha: false });
+          // Output canvas (fixed 4:3)
+          const OUT_W = 2048, OUT_H = 1536;
+          const exportCanvas = document.createElement('canvas');
+          exportCanvas.width = OUT_W; exportCanvas.height = OUT_H;
+          const ctx = exportCanvas.getContext('2d', { alpha: false });
 
-        const mapCanvas = map.getCanvas();
-        const mapRect = mapCanvas.getBoundingClientRect();
-        const boxRect = box.getBoundingClientRect();
+          // White background to fill any bands
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, OUT_W, OUT_H);
 
-        // CSS px -> canvas px scaling
-        const cx = mapCanvas.width  / mapRect.width;
-        const cy = mapCanvas.height / mapRect.height;
+          const mapCanvas = map.getCanvas();
+          const mapRect = mapCanvas.getBoundingClientRect();
+          const boxRect = box.getBoundingClientRect();
 
-        // Proposed crop in canvas px
-        let sx = (boxRect.left - mapRect.left) * cx;
-        let sy = (boxRect.top  - mapRect.top)  * cy;
-        let sw = boxRect.width  * cx;
-        let sh = boxRect.height * cy;
+          // Convert crop rect (CSS px) -> map canvas px, snap & clamp
+          const cx = mapCanvas.width  / mapRect.width;
+          const cy = mapCanvas.height / mapRect.height;
 
-        // --- Pixel snapping & clamping to kill banding ---
-        // Snap to integer device pixels (avoid sampling half-transparent edges)
-        sx = Math.floor(sx);
-        sy = Math.floor(sy);
-        const ex = Math.ceil(sx + sw);
-        const ey = Math.ceil(sy + sh);
-        // Clamp to map canvas bounds
-        const maxW = mapCanvas.width;
-        const maxH = mapCanvas.height;
-        sx = Math.max(0, Math.min(sx, maxW));
-        sy = Math.max(0, Math.min(sy, maxH));
-        const exClamped = Math.max(0, Math.min(ex, maxW));
-        const eyClamped = Math.max(0, Math.min(ey, maxH));
-        sw = Math.max(1, exClamped - sx);
-        sh = Math.max(1, eyClamped - sy);
+          let sx = (boxRect.left - mapRect.left) * cx;
+          let sy = (boxRect.top  - mapRect.top)  * cy;
+          let sw = (boxRect.width)  * cx;
+          let sh = (boxRect.height) * cy;
 
-        // Draw cropped map scaled to export canvas
-        ctx.drawImage(mapCanvas, sx, sy, sw, sh, 0, 0, exportCanvas.width, exportCanvas.height);
+          // Snap to pixel & clamp
+          sx = Math.floor(sx); sy = Math.floor(sy);
+          let ex = Math.ceil(sx + sw), ey = Math.ceil(sy + sh);
+          const maxW = mapCanvas.width, maxH = mapCanvas.height;
+          sx = Math.max(0, Math.min(sx, maxW)); sy = Math.max(0, Math.min(sy, maxH));
+          ex = Math.max(0, Math.min(ex, maxW)); ey = Math.max(0, Math.min(ey, maxH));
+          sw = Math.max(1, ex - sx); sh = Math.max(1, ey - sy);
 
-        // Draw legend at same relative position inside the crop
-        const legendEl = document.getElementById('legend');
-        if (legendEl && legendEl.style.display !== 'none') {
-          const legendCanvas = await html2canvas(legendEl, { backgroundColor: null, scale: 2 });
-          const lr = legendEl.getBoundingClientRect();
+          // Uniform scale to fit into OUT_W x OUT_H (letterbox; no stretch)
+          const scale = Math.min(OUT_W / sw, OUT_H / sh);
+          const dw = Math.round(sw * scale);
+          const dh = Math.round(sh * scale);
+          const dx0 = Math.round((OUT_W - dw) / 2);
+          const dy0 = Math.round((OUT_H - dh) / 2);
 
-          const scaleX = exportCanvas.width  / sw;
-          const scaleY = exportCanvas.height / sh;
+          // Draw cropped map
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(mapCanvas, sx, sy, sw, sh, dx0, dy0, dw, dh);
 
-          // legend position relative to crop box (convert to canvas px, snapped)
-          let lmx = (lr.left - boxRect.left) * cx;
-          let lmy = (lr.top  - boxRect.top)  * cy;
-          let lmw = lr.width  * cx;
-          let lmh = lr.height * cy;
+          // Legend capture & placement (same relative spot inside crop, then scaled + letterboxed)
+          const legendEl = document.getElementById('legend');
+          if (legendEl && legendEl.style.display !== 'none') {
+            const legendCanvas = await html2canvas(legendEl, { backgroundColor: null, scale: 2 });
+            const lr = legendEl.getBoundingClientRect();
 
-          lmx = Math.round(lmx);
-          lmy = Math.round(lmy);
-          lmw = Math.round(lmw);
-          lmh = Math.round(lmh);
+            // Legend position relative to crop box (CSS px -> map canvas px -> scaled, then add letterbox offset)
+            let lmx = (lr.left - boxRect.left) * cx;
+            let lmy = (lr.top  - boxRect.top)  * cy;
+            let lmw = lr.width  * cx;
+            let lmh = lr.height * cy;
 
-          const dx = lmx * scaleX;
-          const dy = lmy * scaleY;
-          const dw = lmw * scaleX;
-          const dh = lmh * scaleY;
+            lmx = Math.round(lmx); lmy = Math.round(lmy);
+            lmw = Math.round(lmw); lmh = Math.round(lmh);
 
-          ctx.drawImage(legendCanvas, 0, 0, legendCanvas.width, legendCanvas.height, dx, dy, dw, dh);
+            const dx = dx0 + Math.round(lmx * scale);
+            const dy = dy0 + Math.round(lmy * scale);
+            const dw2 = Math.max(1, Math.round(lmw * scale));
+            const dh2 = Math.max(1, Math.round(lmh * scale));
+
+            ctx.drawImage(legendCanvas, 0, 0, legendCanvas.width, legendCanvas.height, dx, dy, dw2, dh2);
+          }
+
+          const img = exportCanvas.toDataURL("image/png");
+          const link = document.createElement('a');
+          link.href = img; link.download = "map-export-4x3.png"; link.click();
+          cleanup();
+        } catch (err) {
+          console.error(err);
+          alert('Export failed. Please try again.');
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = "Confirm Export";
+          exporting = false;
         }
-
-        const img = exportCanvas.toDataURL("image/png");
-        const link = document.createElement('a');
-        link.href = img; link.download = "map-export-4x3.png"; link.click();
-        cleanup();
       };
 
       cancelBtn.onclick = () => cleanup();
@@ -988,37 +892,24 @@
 
     // ===== Revert to Base Map =====
     document.getElementById('revertMap').addEventListener('click', () => {
-      // Remove all user layers
       for (const l of [...uploadLayers]) {
         if (map.getLayer(l.circleLayerId)) map.removeLayer(l.circleLayerId);
         if (map.getSource(l.id)) map.removeSource(l.id);
-        const card = document.getElementById(`card-${l.id}`);
-        if (card) card.remove();
+        const card = document.getElementById(`card-${l.id}`); if (card) card.remove();
       }
-      uploadLayers.length = 0;
-      layerCount = 0;
+      uploadLayers.length = 0; layerCount = 0;
       document.getElementById('uploadStatus').textContent = '';
       document.getElementById('addLayerBtn').disabled = false;
 
-      // Reset filters
       const regionSelect = document.getElementById('regionFilter');
       const buSelect = document.getElementById('buFilter');
-      regionSelect.selectedIndex = -1;
-      buSelect.selectedIndex = -1;
+      regionSelect.selectedIndex = -1; buSelect.selectedIndex = -1;
 
-      // Reset offices data
-      if (originalGeojson) {
-        map.getSource(OFFICE_SOURCE).setData(originalGeojson);
-      }
+      if (originalGeojson) map.getSource(OFFICE_SOURCE).setData(originalGeojson);
 
-      // Reset halos if shown
-      if (reachEnabled) {
-        rebuildOfficeHalos(originalGeojson);
-      } else {
-        setHaloData(HALO_OFFICES_SOURCE, emptyFC());
-      }
+      if (reachEnabled) rebuildOfficeHalos(originalGeojson);
+      else setHaloData(HALO_OFFICES_SOURCE, emptyFC());
 
-      // Hide legend (no user layers)
       updateLegend();
     });
 
@@ -1033,9 +924,7 @@
         a.href = URL.createObjectURL(blob);
         a.download = "MapAddressTemplate.csv";
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      } catch (err) {
-        console.error("Failed to download template:", err);
-      }
+      } catch (err) { console.error("Failed to download template:", err); }
     });
 
     // Legend auto-refresh if DOM changes in upload area
