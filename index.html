@@ -143,24 +143,34 @@
     .pickr { flex: 0 0 auto; }
     .pickr .pcr-button { width: 24px; height: 24px; border-radius: 6px; }
 
-    /* Map legend (centered; hidden until a layer is added) */
-    .map-legend {
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
-      bottom: 14px;
-      background: rgba(255,255,255,0.96);
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      box-shadow: var(--shadow);
-      padding: 10px 12px;
-      z-index: 4;
-      max-width: min(90%, 900px);
-    }
-    .map-legend h4 { margin: 0 0 6px 0; font-size: 13px; font-weight: 700; color: #111; text-align:center; }
+    /* Legend: transparent, no border/shadow */
+.map-legend {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 14px;
+
+  /* visual reset */
+  background: transparent;
+  border: none;
+  box-shadow: none;
+
+  border-radius: 10px;        /* keep rounded corners if you like */
+  padding: 8px 10px;
+  z-index: 4;
+  max-width: min(90%, 900px);
+}
+.map-legend h4 {
+  margin: 0 0 6px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #111;
+  text-align:center;
+}
+
     #legendItems { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px 16px; }
     .legend-item { display: inline-flex; align-items: center; gap: 6px; }
-    .legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid #999; display: inline-block; }
+    .legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 0px solid #999; display: inline-block; }
 
     .pcr-app { z-index: 10002; }
   </style>
@@ -237,9 +247,7 @@
 
       <div class="muted" style="margin-top:6px;">Up to 3 additional layers. Each has its own color, name & CSV upload.</div>
 
-      <!-- Global upload status under Layers -->
-      <div id="uploadStatus" class="muted" style="margin-top:10px;"></div>
-    </div>
+       </div>
 
     <!-- Tools (header removed) -->
     <div class="panel-section">
@@ -880,23 +888,32 @@ document.getElementById('exportMap').addEventListener('click', () => {
       // Draw the cropped map
       ctx.drawImage(mapCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
 
-      // Draw legend in-place relative to the crop
-      const legendEl = document.getElementById('legend');
-      if (legendEl && legendEl.style.display !== 'none') {
-        const dpr = window.devicePixelRatio || 1;
-        const legendCanvas = await html2canvas(legendEl, { backgroundColor: null, scale: dpr });
-        const lr = legendEl.getBoundingClientRect();
+ // === Legend capture (pixel-perfect, no background) ===
+const legendEl = document.getElementById('legend');
+if (legendEl && legendEl.style.display !== 'none') {
+  // Match the map canvas pixel density exactly
+  const scaleLegend = mapCanvas.width / mapRect.width;
 
-        let lmx = (lr.left - boxRect.left) * cx;
-        let lmy = (lr.top  - boxRect.top ) * cy;
-        let lmw =  lr.width * cx;
-        let lmh =  lr.height* cy;
+  const legendCanvas = await html2canvas(legendEl, {
+    backgroundColor: null,   // keep transparent
+    scale: scaleLegend,      // same CSS→canvas scale as the map
+    useCORS: true,
+    removeContainer: true,
+    logging: false
+  });
 
-        lmx = Math.round(lmx); lmy = Math.round(lmy);
-        lmw = Math.round(lmw); lmh = Math.round(lmh);
+  // Position inside the crop (in map-canvas pixels)
+  const lr = legendEl.getBoundingClientRect();
+  const lmx = Math.round((lr.left - boxRect.left) * scaleLegend);
+  const lmy = Math.round((lr.top  - boxRect.top ) * scaleLegend);
 
-        ctx.drawImage(legendCanvas, 0, 0, legendCanvas.width, legendCanvas.height, lmx, lmy, lmw, lmh);
-      }
+  // Draw at natural size (no destination scaling)
+  const prevSmooth = ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(legendCanvas, lmx, lmy);
+  ctx.imageSmoothingEnabled = prevSmooth;
+}
+
 
       const url = exportCanvas.toDataURL('image/png');
       const a = document.createElement('a');
@@ -970,6 +987,7 @@ document.getElementById('exportMap').addEventListener('click', () => {
   </script>
 </body>
 </html>
+
 
 
 
