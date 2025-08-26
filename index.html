@@ -143,7 +143,7 @@
     .pickr { flex: 0 0 auto; }
     .pickr .pcr-button { width: 24px; height: 24px; border-radius: 6px; }
 
-    /* Legend: transparent, no shadow/border; header removed */
+    /* Legend: transparent, no border/shadow */
     .map-legend {
       position: absolute;
       left: 50%;
@@ -152,14 +152,16 @@
       background: transparent;
       border: none;
       box-shadow: none;
-      border-radius: 0;
+      border-radius: 10px;
       padding: 8px 10px;
       z-index: 4;
       max-width: min(90%, 900px);
     }
+    /* removed header styling since header removed */
     #legendItems { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px 16px; }
     .legend-item { display: inline-flex; align-items: center; gap: 6px; }
     .legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 0; display: inline-block; }
+
     .pcr-app { z-index: 10002; }
   </style>
 </head>
@@ -232,8 +234,7 @@
       <button class="so-btn" id="addLayerBtn" type="button">+ Add Layer</button>
       <div style="height:8px;"></div>
       <a href="#" id="downloadTemplate" class="muted">Download CSV template</a>
-
-      <div class="muted" style="margin-top:6px;">Up to 3 additional layers. Each has its own color, name, CSV upload & optional Filters toggle.</div>
+      <div class="muted" style="margin-top:6px;">Up to 3 additional layers. Each has its own color, name & CSV upload.</div>
     </div>
 
     <!-- Tools -->
@@ -246,7 +247,7 @@
   <!-- Map -->
   <div id="map"></div>
 
-  <!-- Legend (centered over map; header removed) -->
+  <!-- Legend (centered over map; hidden until a layer is added) -->
   <div id="legend" class="map-legend" aria-label="Legend" style="display:none;">
     <div id="legendItems"></div>
   </div>
@@ -261,6 +262,7 @@
 
     // Isochrone settings
     const ISOCHRONE_MINUTES = 180;
+    const ISOCHRONE_PROFILE = 'driving';
     const isoCache = new Map();
 
     // Map init
@@ -276,14 +278,14 @@
     // Data state
     let originalGeojson = null;
     const OFFICE_SOURCE = 'offices';
-    const OFFICE_LAYER  = 'offices-layer';
+    const OFFICE_LAYER = 'offices-layer';
     const HALO_OFFICES_SOURCE = 'halo-offices';
-    const HALO_OFFICES_FILL   = 'halo-offices-fill';
+    const HALO_OFFICES_FILL = 'halo-offices-fill';
 
     // Upload layers state
     const MAX_LAYERS = 3;
     let layerCount = 0;
-    const uploadLayers = []; // {id, circleLayerId, nameInputId, pickr, visible getter, originalFC, filterActive:boolean}
+    const uploadLayers = []; // { id, sourceId, circleLayerId, nameInputId, pickr, visible, filterActive, originalFC, currentFC }
 
     // Accordion behavior
     document.querySelectorAll('.accordion-header').forEach(h => {
@@ -294,7 +296,7 @@
     });
 
     // Segmented toggle for reach (OFFICES ONLY)
-    const reachOnBtn  = document.getElementById('reachOn');
+    const reachOnBtn = document.getElementById('reachOn');
     const reachOffBtn = document.getElementById('reachOff');
     let reachEnabled = false;
     function setReach(enabled) {
@@ -303,9 +305,14 @@
       reachOnBtn.setAttribute('aria-pressed', String(enabled));
       reachOffBtn.classList.toggle('active', !enabled);
       reachOffBtn.setAttribute('aria-pressed', String(!enabled));
+
       if (!map.isStyleLoaded()) return;
-      if (!enabled) setHaloData(HALO_OFFICES_SOURCE, emptyFC());
-      else rebuildOfficeHalos();
+
+      if (!enabled) {
+        setHaloData(HALO_OFFICES_SOURCE, emptyFC());
+      } else {
+        rebuildOfficeHalos();
+      }
     }
     reachOnBtn.addEventListener('click', () => setReach(true));
     reachOffBtn.addEventListener('click', () => setReach(false));
@@ -318,10 +325,7 @@
         map.addSource(sourceId, { type: 'geojson', data: emptyFC() });
       }
       if (!map.getLayer(layerId)) {
-        map.addLayer(
-          { id: layerId, type: 'fill', source: sourceId, paint: { 'fill-color': color, 'fill-opacity': 0.2 } },
-          beforeLayerId
-        );
+        map.addLayer({ id: layerId, type: 'fill', source: sourceId, paint: { 'fill-color': color, 'fill-opacity': 0.2 } }, beforeLayerId);
       }
     }
     function setHaloData(sourceId, fc) {
@@ -333,7 +337,7 @@
     async function fetchIsochronePolygon(lng, lat) {
       const key = `${lng.toFixed(6)},${lat.toFixed(6)}`;
       if (isoCache.has(key)) return isoCache.get(key);
-      const url = `https://api.mapbox.com/isochrone/v1/mapbox/driving/${lng},${lat}?contours_minutes=${ISOCHRONE_MINUTES}&polygons=true&generalize=10&access_token=${mapboxgl.accessToken}`;
+      const url = `https://api.mapbox.com/isochrone/v1/mapbox/${ISOCHRONE_PROFILE}/${lng},${lat}?contours_minutes=${ISOCHRONE_MINUTES}&polygons=true&generalize=10&access_token=${mapboxgl.accessToken}`;
       try {
         const res = await fetch(url);
         if (!res.ok) throw new Error('Isochrone fetch failed');
@@ -343,8 +347,9 @@
         isoCache.set(key, poly);
         return poly;
       } catch (err) {
-        // Fallback: 180min ~ 289.7km at 60mph avg, rough circle
-        return turf.circle([lng, lat], 289.7, { steps: 128, units: 'kilometers' });
+        const circle = turf.circle([lng, lat], 289.7, { steps: 128, units: 'kilometers' });
+        isoCache.set(key, circle);
+        return circle;
       }
     }
     async function buildIsochronesForPoints(points) {
@@ -397,38 +402,7 @@
       }
     });
 
-    // Filters (helpers shared by offices + uploads)
-    function getSelectedValues(selectEl) { return Array.from(selectEl.selectedOptions || []).map(o => o.value); }
-    function currentRegionSelection() {
-      const el = document.getElementById('regionFilter');
-      return getSelectedValues(el); // e.g. "US|CA", "CAN|ON"
-    }
-    function currentBUSelection() {
-      const el = document.getElementById('buFilter');
-      return getSelectedValues(el);
-    }
-    function filterFeaturesBySelections(features, regions, busSel, isOfficeData) {
-      // For offices: regions compare using country|state. For uploads: state only.
-      const regionStates = regions.map(code => (code.split('|')[1] || '').trim());
-      return features.filter(f => {
-        const p = f.properties || {};
-        // Region filter
-        if (regions.length) {
-          if (isOfficeData) {
-            const code = (p.country || '') + '|' + (p.state || '');
-            if (!regions.includes(code)) return false;
-          } else {
-            const st = (p.state || '').trim();
-            if (!st || !regionStates.includes(st)) return false;
-          }
-        }
-        // BU filter (only if the feature has a 'bu' property)
-        if (busSel.length && p.bu && !busSel.includes(p.bu)) return false;
-        return true;
-      });
-    }
-
-    // Filters UI and application
+    // Filters
     function buildFilters(gj) {
       const regionSelect = document.getElementById('regionFilter');
       const buSelect = document.getElementById('buFilter');
@@ -441,41 +415,96 @@
       const bus = [...new Set(gj.features.map(f => f.properties.bu).filter(Boolean))].sort();
 
       const caGroup = document.createElement('optgroup'); caGroup.label = 'Canada';
-      provinces.forEach(p => { const o = document.createElement('option'); o.value = 'CAN|' + p; o.textContent = p; caGroup.appendChild(o); });
+      provinces.forEach(p => { const o = document.createElement('option'); o.value = 'CAN|'+p; o.textContent = p; caGroup.appendChild(o); });
 
       const usGroup = document.createElement('optgroup'); usGroup.label = 'United States';
-      states.forEach(s => { const o = document.createElement('option'); o.value = 'US|' + s; o.textContent = s; usGroup.appendChild(o); });
+      states.forEach(s => { const o = document.createElement('option'); o.value = 'US|'+s; o.textContent = s; usGroup.appendChild(o); });
 
       regionSelect.appendChild(caGroup);
       regionSelect.appendChild(usGroup);
+
       bus.forEach(b => { const o = document.createElement('option'); o.value = b; o.textContent = b; buSelect.appendChild(o); });
 
+      function getSelected(select) { return Array.from(select.selectedOptions).map(o => o.value); }
+
       async function applyFilters() {
-        const regions = currentRegionSelection();
-        const busSel  = currentBUSelection();
+        const regionsRaw = getSelected(regionSelect);
+        const regions = regionsRaw.map(v => v.split('|')[1]); // just the state/province text
+        const busSel = getSelected(buSelect);
 
-        const filteredOffices = {
+        // Offices
+        const filtered = {
           type: 'FeatureCollection',
-          features: filterFeaturesBySelections(originalGeojson.features, regions, busSel, true)
+          features: originalGeojson.features.filter(f => {
+            const props = f.properties || {};
+            let ok = true;
+            if (regions.length) {
+              const code = props.state || '';
+              if (!regions.includes(code)) ok = false;
+            }
+            if (busSel.length && props.bu && !busSel.includes(props.bu)) ok = false;
+            return ok;
+          })
         };
-        map.getSource(OFFICE_SOURCE).setData(filteredOffices);
-        if (reachEnabled) await rebuildOfficeHalos(filteredOffices);
+        map.getSource(OFFICE_SOURCE).setData(filtered);
+        if (reachEnabled) await rebuildOfficeHalos(filtered);
 
-        // Apply to uploaded layers that opted-in
-        applyFiltersToUploads();
+        // Apply to any upload layers that opted in
+        for (const layer of uploadLayers) {
+          if (layer.filterActive) applyFiltersToUploadLayer(layer);
+        }
       }
 
       document.getElementById('clearRegion').addEventListener('click', () => { regionSelect.selectedIndex = -1; applyFilters(); });
-      document.getElementById('clearBU').addEventListener('click',     () => { buSelect.selectedIndex    = -1; applyFilters(); });
+      document.getElementById('clearBU').addEventListener('click', () => { buSelect.selectedIndex = -1; applyFilters(); });
       document.getElementById('clearFilters').addEventListener('click', () => {
         regionSelect.selectedIndex = -1; buSelect.selectedIndex = -1;
         map.getSource(OFFICE_SOURCE).setData(originalGeojson);
         if (reachEnabled) rebuildOfficeHalos(originalGeojson);
-        applyFiltersToUploads();
+        // Reset uploaded layers that are linked
+        for (const layer of uploadLayers) {
+          if (layer.filterActive && layer.originalFC) {
+            const src = map.getSource(layer.id);
+            if (src) { src.setData(layer.originalFC); layer.currentFC = layer.originalFC; }
+          }
+        }
       });
 
       regionSelect.addEventListener('change', applyFilters);
       buSelect.addEventListener('change', applyFilters);
+
+      // helper visible to upload-layers filtering
+      window.__getActiveFilters = () => ({
+        regions: getSelected(regionSelect).map(v => v.split('|')[1]),
+        bus: getSelected(buSelect)
+      });
+    }
+
+    function applyFiltersToUploadLayer(layer) {
+      if (!layer || !layer.originalFC) return;
+      const { regions, bus } = (window.__getActiveFilters && window.__getActiveFilters()) || { regions: [], bus: [] };
+      const filtered = {
+        type: 'FeatureCollection',
+        features: (layer.originalFC.features || []).filter(f => {
+          const p = f.properties || {};
+          let ok = true;
+          if (regions.length && p.state) {
+            ok = regions.includes(p.state);
+          } else if (regions.length) {
+            ok = false; // if regions selected but item has no state, hide it
+          }
+          if (ok && bus.length && p.bu) {
+            ok = bus.includes(p.bu);
+          } else if (ok && bus.length && !p.bu) {
+            // if BU filter is selected but upload has no BU, you may decide to hide or show.
+            // Here we keep showing unless you want to hide: change to ok=false to hide.
+            ok = true;
+          }
+          return ok;
+        })
+      };
+      const src = map.getSource(layer.id);
+      if (src) { src.setData(filtered); layer.currentFC = filtered; }
     }
 
     // Office popups
@@ -535,8 +564,8 @@
     }
     function addLegendItem(container, color, name) {
       const row = document.createElement('div'); row.className = 'legend-item';
-      const sw  = document.createElement('span'); sw.className = 'legend-swatch'; sw.style.background = color;
-      const text= document.createElement('span'); text.textContent = name;
+      const sw = document.createElement('span'); sw.className = 'legend-swatch'; sw.style.background = color;
+      const text = document.createElement('span'); text.textContent = name;
       row.appendChild(sw); row.appendChild(text); container.appendChild(row);
     }
 
@@ -552,12 +581,12 @@
     });
 
     function paletteColor(seed) {
-      const palette = ['#000086', '#E35920', '#00745C', '#5B0088', '#0ea5e9', '#f59e0b'];
+      const palette = ['#000086', '#16a34a', '#ea580c', '#2563eb', '#0ea5e9', '#f59e0b'];
       return palette[(seed - 1) % palette.length];
     }
     function normalizeHex(hex) { if (!hex) return '#000000'; return hex.length === 9 ? hex.slice(0, 7) : hex; }
 
-    // Interaction shield for color picker
+    // --- Interaction shield for color picker (prevents map stealing drags) ---
     let __shield = null;
     function showInteractionShield() {
       if (__shield) return;
@@ -593,13 +622,12 @@
             <label class="muted">Marker Color</label>
           </div>
           <div class="layer-row">
-            <input type="file" id="file-${layerId}" accept=".csv">
+            <label style="display:flex; align-items:center; gap:8px;">
+              <input type="checkbox" id="link-${layerId}"> Use filters
+            </label>
           </div>
           <div class="layer-row">
-            <label class="muted" style="display:flex; align-items:center; gap:6px;">
-              <input type="checkbox" id="filter-${layerId}">
-              Apply Filters to this layer
-            </label>
+            <input type="file" id="file-${layerId}" accept=".csv">
           </div>
           <div id="${statusId}" class="muted"></div>
         </div>
@@ -609,69 +637,72 @@
       map.addSource(layerId, { type:'geojson', data: emptyFC() });
       map.addLayer({ id: circleLayerId, type: 'circle', source: layerId, paint: { 'circle-radius': 6, 'circle-color': defaultColor } });
 
+      // Create Pickr
       const pickr = Pickr.create({
         el: `#picker-${layerId}`,
         theme: 'classic',
         default: defaultColor,
         container: document.body,
-        components: {
-          preview: true,
-          opacity: false,
-          hue: true,
-          interaction: { hex: true, input: true } // ← no save/cancel; live updates
-        }
+        components: { preview: true, opacity: false, hue: true, interaction: { hex: true, input: true, save: true, cancel: true } }
       });
 
+      // Upload layer record
+      const layerRecord = {
+        id: layerId,
+        sourceId: layerId,
+        circleLayerId,
+        nameInputId: `name-${layerId}`,
+        pickr,
+        get visible() { return visible; },
+        filterActive: false,
+        originalFC: emptyFC(),
+        currentFC: emptyFC()
+      };
+      uploadLayers.push(layerRecord);
+
+      // --- Color apply utility (instant chip + map + data) ---
       function applyColorToLayer(hex) {
-  const normalized = normalizeHex(hex);
+        const normalized = normalizeHex(hex);
 
-  // Update the small preview chip in the layer card
-  const chip = document.querySelector(`#picker-${layerId} .pcr-button`);
-  if (chip) chip.style.background = normalized;
+        // Update the small preview chip in the layer card
+        const chip = document.querySelector(`#picker-${layerId} .pcr-button`);
+        if (chip) chip.style.background = normalized;
 
-  // Also update Pickr's internal button (some themes read from here)
-  const root = pickr.getRoot && pickr.getRoot();
-  if (root && root.button) root.button.style.background = normalized;
+        // Also update Pickr's internal button
+        const root = pickr.getRoot && pickr.getRoot();
+        if (root && root.button) root.button.style.background = normalized;
 
-  // Update the map layer color
-  if (map.getLayer(circleLayerId)) {
-    map.setPaintProperty(circleLayerId, 'circle-color', normalized);
-  }
+        // Update map layer
+        if (map.getLayer(circleLayerId)) {
+          map.setPaintProperty(circleLayerId, 'circle-color', normalized);
+        }
 
-  // Update current source data color
-  const src = map.getSource(layerId);
-  if (src && src._data) {
-    const live = src._data;
-    (live.features || []).forEach(f => f.properties.color = normalized);
-    src.setData(live);
-  }
+        // Update current data colors (if any loaded)
+        const src = map.getSource(layerId);
+        if (src && layerRecord.currentFC && layerRecord.currentFC.features) {
+          layerRecord.currentFC.features.forEach(f => { (f.properties || (f.properties = {})).color = normalized; });
+          src.setData(layerRecord.currentFC);
+        }
 
-  // Keep stored original (for filtering) in sync
-  const layer = uploadLayers.find(l => l.id === layerId);
-  if (layer && layer.originalFC && layer.originalFC.features) {
-    layer.originalFC.features.forEach(f => { f.properties.color = normalized; });
-    if (layer.filterActive) applyFiltersToUploadLayer(layer);
-  }
+        // Keep originalFC colors in sync (so filtering preserves color)
+        if (layerRecord.originalFC && layerRecord.originalFC.features) {
+          layerRecord.originalFC.features.forEach(f => { (f.properties || (f.properties = {})).color = normalized; });
+          if (layerRecord.filterActive) applyFiltersToUploadLayer(layerRecord);
+        }
 
-  updateLegend();
-}
+        updateLegend();
+      }
 
-
-
-      // Initialize preview & layer paint to default
+      // Pickr events: live updates (no need to press Save)
       pickr.on('init', () => {
         const hex = normalizeHex(pickr.getColor().toHEXA().toString() || defaultColor);
-        const btnEl = pickr.getRoot().button;
-        if (btnEl) btnEl.style.backgroundColor = hex;
-        if (map.getLayer(circleLayerId)) map.setPaintProperty(circleLayerId, 'circle-color', hex);
+        applyColorToLayer(hex);
       });
+      pickr.on('change', (c) => { applyColorToLayer(c.toHEXA().toString()); });
+      pickr.on('swatchselect', (c) => { applyColorToLayer(c.toHEXA().toString()); });
+      pickr.on('save', () => { pickr.hide(); });
 
-      // Live updates while dragging/typing
-      pickr.on('change', (c) => applyColorToLayer(c.toHEXA().toString()));
-      // Also apply when a swatch is clicked
-      pickr.on('swatchselect', (c) => applyColorToLayer(c.toHEXA().toString()));
-
-      // While the picker is open, block accidental map interactions
+      // Interaction shield while picker is open
       const mapCanvas = map.getCanvas();
       function restoreAfterPickr() {
         hideInteractionShield();
@@ -685,9 +716,10 @@
         map.dragRotate.disable(); map.keyboard.disable(); map.doubleClickZoom.disable();
         mapCanvas.style.pointerEvents = '';
       });
-      pickr.on('hide', restoreAfterPickr);
-      pickr.on('cancel', restoreAfterPickr); // (cancel exists even if hidden in UI)
+      pickr.on('cancel', restoreAfterPickr);
+      pickr.on('hide',   restoreAfterPickr);
 
+      // Visibility toggle
       let visible = true;
       document.getElementById(`toggle-${layerId}`).addEventListener('click', () => {
         visible = !visible;
@@ -695,6 +727,7 @@
         updateLegend();
       });
 
+      // Remove layer
       document.getElementById(`remove-${layerId}`).addEventListener('click', () => {
         card.remove();
         if (map.getLayer(circleLayerId)) map.removeLayer(circleLayerId);
@@ -704,58 +737,35 @@
         layerCount--; addLayerBtn.disabled = false; updateLegend();
       });
 
+      // Legend name live update
       document.getElementById(`name-${layerId}`).addEventListener('input', updateLegend);
 
-      const fileInput     = document.getElementById(`file-${layerId}`);
-      const perLayerStatus= document.getElementById(statusId);
-      fileInput.addEventListener('change', (e) => handleCSVUpload(e, layerId, pickr, perLayerStatus));
-
-      const filterToggle = document.getElementById(`filter-${layerId}`);
-      filterToggle.addEventListener('change', () => {
-        const layer = uploadLayers.find(l => l.id === layerId);
-        if (layer) {
-          layer.filterActive = filterToggle.checked;
-          applyFiltersToUploadLayer(layer);
-          updateLegend();
+      // Filter link toggle
+      const linkChk = document.getElementById(`link-${layerId}`);
+      linkChk.addEventListener('change', () => {
+        layerRecord.filterActive = linkChk.checked;
+        if (layerRecord.filterActive) applyFiltersToUploadLayer(layerRecord);
+        else {
+          const src = map.getSource(layerId);
+          if (src && layerRecord.originalFC) {
+            src.setData(layerRecord.originalFC);
+            layerRecord.currentFC = layerRecord.originalFC;
+          }
         }
       });
 
-      uploadLayers.push({
-        id: layerId,
-        sourceId: layerId,
-        circleLayerId,
-        nameInputId: `name-${layerId}`,
-        pickr,
-        originalFC: emptyFC(),
-        filterActive: false,
-        get visible() { return visible; }
-      });
+      // File input wiring
+      const fileInput = document.getElementById(`file-${layerId}`);
+      const perLayerStatus = document.getElementById(statusId);
+      fileInput.addEventListener('change', (e) => handleCSVUpload(e, layerRecord, perLayerStatus));
+
       updateLegend();
     }
 
-    // Apply filters to one / all upload layers
-    function applyFiltersToUploadLayer(layer) {
-      const src = map.getSource(layer.id);
-      if (!src) return;
-      const regions = currentRegionSelection();
-      const busSel  = currentBUSelection();
-      const orig = layer.originalFC || emptyFC();
-      if (!layer.filterActive) { src.setData(orig); return; }
-      const filtered = {
-        type: 'FeatureCollection',
-        features: filterFeaturesBySelections(orig.features, regions, busSel, false)
-      };
-      src.setData(filtered);
-    }
-    function applyFiltersToUploads() {
-      for (const l of uploadLayers) applyFiltersToUploadLayer(l);
-    }
-
     // Handle CSV for a given layer
-    function handleCSVUpload(event, layerId, pickr, statusEl) {
+    function handleCSVUpload(event, layerRecord, statusEl) {
       const input = event.target;
-      theFile = input.files && input.files[0];
-      const file = theFile;
+      const file = input.files && input.files[0];
       if (!file) return;
 
       statusEl.textContent = "Uploading…";
@@ -767,7 +777,7 @@
         complete: async (results) => {
           try {
             const features = [];
-            const color = normalizeHex(pickr.getColor().toHEXA().toString());
+            const color = normalizeHex(layerRecord.pickr.getColor().toHEXA().toString());
 
             for (const row of results.data) {
               let lat = parseFloat(row.Latitude);
@@ -796,32 +806,30 @@
                     officeName: row["LABEL"] || row["Label"] || "",
                     address: row.ADDRESS || "",
                     state: row["STATE / PROVINCE"] || "",
-                    bu: row["BU"] || row["Business Unit"] || row["business_unit"] || undefined,
+                    bu: row["BU"] || row["Business Unit"] || "",
                     color
                   }
                 });
               }
             }
 
-            const uploadedGeojson = { type:"FeatureCollection", features };
-
-            // Store original for future re-filtering
-            const layer = uploadLayers.find(l => l.id === layerId);
-            if (layer) layer.originalFC = uploadedGeojson;
-
-            const name = (document.getElementById(`name-${layerId}`)?.value || 'Layer').trim();
+            const name = (document.getElementById(layerRecord.nameInputId)?.value || 'Layer').trim();
             statusEl.textContent = features.length > 0
               ? `✅ ${features.length} locations added to ${name}.`
               : "⚠️ No valid locations found in the file.";
 
-            // Apply filters if toggle is on; otherwise show original
-            if (layer && layer.filterActive) applyFiltersToUploadLayer(layer);
-            else {
-              const src = map.getSource(layerId);
-              if (src) src.setData(uploadedGeojson);
+            const uploadedGeojson = { type:"FeatureCollection", features };
+            const src = map.getSource(layerRecord.id);
+            if (src) {
+              src.setData(uploadedGeojson);
+              layerRecord.originalFC = uploadedGeojson;
+              layerRecord.currentFC = uploadedGeojson;
             }
 
-            wireUploadLayerPopups(layerId);
+            wireUploadLayerPopups(layerRecord.id);
+            // if linked to filters, apply them now
+            if (layerRecord.filterActive) applyFiltersToUploadLayer(layerRecord);
+
             updateLegend();
           } catch (err) {
             console.error(err);
@@ -853,7 +861,7 @@
       map.on('mouseleave', circleId, () => { map.getCanvas().style.cursor = ''; popup.remove(); });
     }
 
-    // ===== Export (fixed viewfinder; keep current zoom; allow zoom/pan; legend centered + 30px bottom margin) =====
+    // ===== Export (fixed viewfinder; pan/zoom map underneath; exact 21.278:12.889) =====
     document.getElementById('exportMap').addEventListener('click', () => {
       const panel = document.getElementById('panel');
       const controls = document.querySelectorAll('.mapboxgl-ctrl');
@@ -864,23 +872,23 @@
       const prevCtrlVis = [];
       controls.forEach((c, i) => { prevCtrlVis[i] = c.style.visibility; c.style.visibility = 'hidden'; });
 
-      // DO NOT call map.resize() — keeps current zoom
-      // We do NOT lock zoom; user can zoom & pan while overlay is shown.
+      // DO NOT call map.resize()
 
-      // Fixed crop frame (exact ratio); overlay is click-through so map can pan/zoom underneath
+      // Fixed crop frame; overlay is click-through so map can pan/zoom
       const TARGET_AR = 21.278 / 12.889; // ≈ 1.650865
       const overlay = document.createElement('div');
       overlay.style.cssText = 'position:fixed; inset:0; z-index:9999; pointer-events:none;';
+
       const frame = document.createElement('div');
       Object.assign(frame.style, {
         position: 'absolute',
         top: '50%', left: '50%',
-        width: '80%',
+        width: '80%',                 // initial width
         aspectRatio: String(TARGET_AR),
         transform: 'translate(-50%, -50%)',
         outline: '2px dashed #666',
         outlineOffset: '0',
-        pointerEvents: 'none',
+        pointerEvents: 'none',         // clicks go to the map
         boxSizing: 'border-box'
       });
       overlay.appendChild(frame);
@@ -894,7 +902,7 @@
       });
       overlay.appendChild(hint);
 
-      // Controls container (can receive pointer events)
+      // Controls (pointer-enabled)
       const controlsWrap = document.createElement('div');
       Object.assign(controlsWrap.style, {
         position: 'absolute', bottom: '20px', right: '20px',
@@ -902,7 +910,6 @@
         pointerEvents: 'auto'
       });
 
-      // Size slider (changes frame width %, stays centered)
       const sizeLabel = document.createElement('span');
       sizeLabel.textContent = 'Frame size';
       sizeLabel.style.color = '#fff';
@@ -930,7 +937,6 @@
 
       let exporting = false;
 
-      // Robust paint waiter: never hang on idle
       async function waitForMapQuiet(timeoutMs = 1200) {
         if (map.isMoving()) {
           await Promise.race([
@@ -967,7 +973,7 @@
           let sw = boxRect.width  * cx;
           let sh = boxRect.height * cy;
 
-          // Snap to whole device pixels & clamp
+          // Snap & clamp
           sx = Math.max(0, Math.floor(sx));
           sy = Math.max(0, Math.floor(sy));
           const ex = Math.min(mapCanvas.width,  Math.ceil(sx + sw));
@@ -975,17 +981,17 @@
           sw = Math.max(1, ex - sx);
           sh = Math.max(1, ey - sy);
 
-          // Create export canvas EXACTLY at crop size
+          // Export canvas exactly at crop size
           const exportCanvas = document.createElement('canvas');
           exportCanvas.width = sw;
           exportCanvas.height = sh;
           const ctx = exportCanvas.getContext('2d', { alpha: false });
           ctx.imageSmoothingEnabled = false;
 
-          // Draw cropped map
+          // Draw map crop
           ctx.drawImage(mapCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
 
-          // === Legend capture (transparent; centered; EXACT 30px bottom margin) ===
+          // === Legend capture (transparent; EXACT 30px bottom margin; centered horizontally) ===
           const legendEl = document.getElementById('legend');
           if (legendEl && legendEl.style.display !== 'none') {
             const scaleLegend = mapCanvas.width / mapRect.width; // CSS→canvas scale
@@ -999,17 +1005,18 @@
               logging: false
             });
 
-            const legendW = Math.round(lr.width  * scaleLegend);
+            const legendW = Math.round(lr.width * scaleLegend);
             const legendH = Math.round(lr.height * scaleLegend);
 
-            // Center horizontally in the crop
+            // horizontally center inside the crop
             let lmx = Math.round((sw - legendW) / 2);
-            // Exactly 30px above the bottom (in canvas px)
+            // 30px bottom margin inside the crop
             const desiredBottom = Math.round(30 * scaleLegend);
             let lmy = Math.max(0, sh - desiredBottom - legendH);
 
-            // Clamp if legend wider than crop
+            // Clamp just in case
             lmx = Math.max(0, Math.min(lmx, sw - legendW));
+            lmy = Math.max(0, Math.min(lmy, sh - legendH));
 
             const prevSmooth = ctx.imageSmoothingEnabled;
             ctx.imageSmoothingEnabled = true;
@@ -1017,10 +1024,11 @@
             ctx.imageSmoothingEnabled = prevSmooth;
           }
 
+          // Save
           const url = exportCanvas.toDataURL('image/png');
           const a = document.createElement('a');
           a.href = url;
-          a.download = 'map-export-21.278x12.889-ratio.png';
+          a.download = 'map export.png';
           a.click();
 
           cleanup();
@@ -1039,6 +1047,7 @@
         document.body.removeChild(overlay);
         panel.style.visibility = prevPanelVis || '';
         controls.forEach((c, i) => c.style.visibility = prevCtrlVis[i] || '');
+        exporting = false;
       }
     });
 
@@ -1083,5 +1092,3 @@
   </script>
 </body>
 </html>
-
-
