@@ -614,32 +614,58 @@
         theme: 'classic',
         default: defaultColor,
         container: document.body,
-        components: { preview: true, opacity: false, hue: true, interaction: { hex: true, input: true, save: true, cancel: true } }
+        components: {
+          preview: true,
+          opacity: false,
+          hue: true,
+          interaction: { hex: true, input: true } // ← no save/cancel; live updates
+        }
       });
 
-      let isPicking = false;
       function applyColorToLayer(hex) {
         const normalized = normalizeHex(hex);
-        const pickerButton = document.querySelector(`#picker-${layerId} .pcr-button`);
-        if (pickerButton) pickerButton.style.background = normalized;
+
+        // Update the small preview button via Pickr root
+        const btnEl = pickr.getRoot().button;
+        if (btnEl) btnEl.style.backgroundColor = normalized;
+
+        // Set paint color
         if (map.getLayer(circleLayerId)) map.setPaintProperty(circleLayerId, 'circle-color', normalized);
+
+        // Update current source data color
         const src = map.getSource(layerId);
         if (src && src._data) {
-          const data = src._data;
-          (data.features || []).forEach(f => f.properties.color = normalized);
-          src.setData(data);
+          const live = src._data;
+          (live.features || []).forEach(f => f.properties.color = normalized);
+          src.setData(live);
         }
+
+        // Update stored original for filtering coherence
+        const layer = uploadLayers.find(l => l.id === layerId);
+        if (layer && layer.originalFC && layer.originalFC.features) {
+          layer.originalFC.features.forEach(f => { f.properties.color = normalized; });
+          if (layer.filterActive) {
+            applyFiltersToUploadLayer(layer);
+          }
+        }
+
         updateLegend();
       }
 
+      // Initialize preview & layer paint to default
       pickr.on('init', () => {
         const hex = normalizeHex(pickr.getColor().toHEXA().toString() || defaultColor);
-        const btn = document.querySelector(`#picker-${layerId} .pcr-button`);
-        if (btn) btn.style.background = hex;
+        const btnEl = pickr.getRoot().button;
+        if (btnEl) btnEl.style.backgroundColor = hex;
         if (map.getLayer(circleLayerId)) map.setPaintProperty(circleLayerId, 'circle-color', hex);
       });
-      pickr.on('change', (c) => { if (!isPicking) return; applyColorToLayer(c.toHEXA().toString()); });
 
+      // Live updates while dragging/typing
+      pickr.on('change', (c) => applyColorToLayer(c.toHEXA().toString()));
+      // Also apply when a swatch is clicked
+      pickr.on('swatchselect', (c) => applyColorToLayer(c.toHEXA().toString()));
+
+      // While the picker is open, block accidental map interactions
       const mapCanvas = map.getCanvas();
       function restoreAfterPickr() {
         hideInteractionShield();
@@ -647,17 +673,14 @@
         map.dragRotate.enable(); map.keyboard.enable(); map.doubleClickZoom.enable();
         mapCanvas.style.pointerEvents = '';
       }
-
       pickr.on('show', () => {
-        isPicking = true;
         showInteractionShield();
         map.dragPan.disable(); map.scrollZoom.disable(); map.boxZoom.disable();
         map.dragRotate.disable(); map.keyboard.disable(); map.doubleClickZoom.disable();
         mapCanvas.style.pointerEvents = '';
       });
-      pickr.on('save', (c) => { applyColorToLayer(c.toHEXA().toString()); isPicking = false; restoreAfterPickr(); pickr.hide(); });
-      pickr.on('cancel', () => { isPicking = false; restoreAfterPickr(); });
-      pickr.on('hide',   () => { isPicking = false; restoreAfterPickr(); });
+      pickr.on('hide', restoreAfterPickr);
+      pickr.on('cancel', restoreAfterPickr); // (cancel exists even if hidden in UI)
 
       let visible = true;
       document.getElementById(`toggle-${layerId}`).addEventListener('click', () => {
@@ -725,7 +748,8 @@
     // Handle CSV for a given layer
     function handleCSVUpload(event, layerId, pickr, statusEl) {
       const input = event.target;
-      const file = input.files && input.files[0];
+      theFile = input.files && input.files[0];
+      const file = theFile;
       if (!file) return;
 
       statusEl.textContent = "Uploading…";
@@ -823,7 +847,7 @@
       map.on('mouseleave', circleId, () => { map.getCanvas().style.cursor = ''; popup.remove(); });
     }
 
-    // ===== Export (fixed viewfinder; map zoom locked; exact 21.278:12.889; legend centered + 30px bottom margin) =====
+    // ===== Export (fixed viewfinder; keep current zoom; allow zoom/pan; legend centered + 30px bottom margin) =====
     document.getElementById('exportMap').addEventListener('click', () => {
       const panel = document.getElementById('panel');
       const controls = document.querySelectorAll('.mapboxgl-ctrl');
@@ -834,26 +858,10 @@
       const prevCtrlVis = [];
       controls.forEach((c, i) => { prevCtrlVis[i] = c.style.visibility; c.style.visibility = 'hidden'; });
 
-      // Lock zoom (keep same zoom as at click time); allow panning
-      const restore = {
-        scrollZoom: map.scrollZoom.isEnabled(),
-        boxZoom: map.boxZoom.isEnabled(),
-        doubleClickZoom: map.doubleClickZoom.isEnabled(),
-        touchZoomRotate: map.touchZoomRotate.isEnabled(),
-        keyboard: map.keyboard.isEnabled(),
-        dragRotate: map.dragRotate.isEnabled()
-      };
-      map.scrollZoom.disable();
-      map.boxZoom.disable();
-      map.doubleClickZoom.disable();
-      map.touchZoomRotate.disable();
-      map.keyboard.disable();
-      map.dragRotate.disable();
-      // (dragPan remains as-is so you can reposition without changing zoom)
+      // DO NOT call map.resize() — keeps current zoom
+      // We do NOT lock zoom; user can zoom & pan while overlay is shown.
 
-      // DO NOT call map.resize()
-
-      // Fixed crop frame (exact ratio); overlay is click-through so map can pan underneath
+      // Fixed crop frame (exact ratio); overlay is click-through so map can pan/zoom underneath
       const TARGET_AR = 21.278 / 12.889; // ≈ 1.650865
       const overlay = document.createElement('div');
       overlay.style.cssText = 'position:fixed; inset:0; z-index:9999; pointer-events:none;';
@@ -872,7 +880,7 @@
       overlay.appendChild(frame);
 
       const hint = document.createElement('div');
-      hint.textContent = 'Pan the map to compose (zoom locked). Resize frame with the slider.';
+      hint.textContent = 'Pan/zoom the map to compose. Resize frame with the slider.';
       Object.assign(hint.style, {
         position: 'absolute', top: '15px', left: '50%', transform: 'translateX(-50%)',
         fontSize: '14px', color: '#fff', background: 'rgba(0,0,0,0.6)',
@@ -1025,13 +1033,6 @@
         document.body.removeChild(overlay);
         panel.style.visibility = prevPanelVis || '';
         controls.forEach((c, i) => c.style.visibility = prevCtrlVis[i] || '');
-        // Restore interactions
-        if (restore.scrollZoom) map.scrollZoom.enable(); else map.scrollZoom.disable();
-        if (restore.boxZoom) map.boxZoom.enable(); else map.boxZoom.disable();
-        if (restore.doubleClickZoom) map.doubleClickZoom.enable(); else map.doubleClickZoom.disable();
-        if (restore.touchZoomRotate) map.touchZoomRotate.enable(); else map.touchZoomRotate.disable();
-        if (restore.keyboard) map.keyboard.enable(); else map.keyboard.disable();
-        if (restore.dragRotate) map.dragRotate.enable(); else map.dragRotate.disable();
       }
     });
 
