@@ -623,34 +623,33 @@
       });
 
       function applyColorToLayer(hex) {
-        const normalized = normalizeHex(hex);
+  const normalized = normalizeHex(hex);
 
-        // Update the small preview button via Pickr root
-        const btnEl = pickr.getRoot().button;
-        if (btnEl) btnEl.style.backgroundColor = normalized;
+  // Update the small preview button shown in the layer card
+  const btn = document.querySelector(`#picker-${layerId} .pcr-button`);
+  if (btn) btn.style.background = normalized;
 
-        // Set paint color
-        if (map.getLayer(circleLayerId)) map.setPaintProperty(circleLayerId, 'circle-color', normalized);
+  // Set paint color
+  if (map.getLayer(circleLayerId)) map.setPaintProperty(circleLayerId, 'circle-color', normalized);
 
-        // Update current source data color
-        const src = map.getSource(layerId);
-        if (src && src._data) {
-          const live = src._data;
-          (live.features || []).forEach(f => f.properties.color = normalized);
-          src.setData(live);
-        }
+  // Update current source data color
+  const src = map.getSource(layerId);
+  if (src && src._data) {
+    const live = src._data;
+    (live.features || []).forEach(f => f.properties.color = normalized);
+    src.setData(live);
+  }
 
-        // Update stored original for filtering coherence
-        const layer = uploadLayers.find(l => l.id === layerId);
-        if (layer && layer.originalFC && layer.originalFC.features) {
-          layer.originalFC.features.forEach(f => { f.properties.color = normalized; });
-          if (layer.filterActive) {
-            applyFiltersToUploadLayer(layer);
-          }
-        }
+  // Update stored original for filtering coherence
+  const layer = uploadLayers.find(l => l.id === layerId);
+  if (layer && layer.originalFC && layer.originalFC.features) {
+    layer.originalFC.features.forEach(f => { f.properties.color = normalized; });
+    if (layer.filterActive) applyFiltersToUploadLayer(layer);
+  }
 
-        updateLegend();
-      }
+  updateLegend();
+}
+
 
       // Initialize preview & layer paint to default
       pickr.on('init', () => {
@@ -1077,3 +1076,4 @@
   </script>
 </body>
 </html>
+
