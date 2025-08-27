@@ -217,16 +217,22 @@
     <div class="panel-section" id="layersSection">
       <div class="section-title">Layers</div>
 
-      <!-- Offices legend -->
-      <div class="layer-card" aria-label="Offices layer">
-        <div class="layer-header">
-          <div class="layer-meta">
-            <strong>Salas O'Brien Offices</strong>
-          </div>
-          <div class="muted">Built-in</div>
-        </div>
-        <div class="muted">This layer is always present and filterable.</div>
-      </div>
+      
+
+    <!-- Offices legend -->
+<div class="layer-card" aria-label="Offices layer">
+  <div class="layer-header">
+    <div class="layer-meta">
+      <strong>Salas O'Brien Offices</strong>
+      <span class="muted">Built-in</span>
+    </div>
+    <div class="layer-actions">
+      <button class="icon-btn" id="toggle-offices" title="Toggle visibility">👁</button>
+    </div>
+  </div>
+  <div class="muted">This layer is filterable and supports reach halos.</div>
+</div>
+
 
       <!-- Dynamic upload layers container -->
       <div id="uploadLayers"></div>
@@ -286,6 +292,25 @@
     const MAX_LAYERS = 3;
     let layerCount = 0;
     const uploadLayers = []; // { id, sourceId, circleLayerId, nameInputId, pickr, visible, filterActive, originalFC, currentFC }
+
+    // Offices layer visibility
+let officesVisible = true;
+
+function setOfficesVisible(show) {
+  officesVisible = !!show;
+  if (map.getLayer(OFFICE_LAYER)) {
+    map.setLayoutProperty(OFFICE_LAYER, 'visibility', officesVisible ? 'visible' : 'none');
+  }
+  // Keep halos in sync
+  if (!officesVisible) {
+    setHaloData(HALO_OFFICES_SOURCE, { type:'FeatureCollection', features: [] });
+  } else if (reachEnabled) {
+    const srcData = map.getSource(OFFICE_SOURCE)?._data || originalGeojson;
+    rebuildOfficeHalos(srcData);
+  }
+  updateLegend();
+}
+
 
     // Accordion behavior
     document.querySelectorAll('.accordion-header').forEach(h => {
@@ -397,10 +422,23 @@
         wireOfficePopups();
         setReach(false);
         updateLegend();
+
+          });
+
+    // Wire up Offices eye toggle
+const officesBtn = document.getElementById('toggle-offices');
+if (officesBtn) {
+  officesBtn.addEventListener('click', () => {
+    setOfficesVisible(!officesVisible);
+    // swap icon to match show/hide style
+    officesBtn.textContent = officesVisible ? '👁' : '🚫';
+  });
+}
       } catch (e) {
         console.error('Error loading dataset:', e);
       }
-    });
+  
+
 
     // Filters
     function buildFilters(gj) {
@@ -553,7 +591,7 @@
       }
       legendEl.style.display = '';
       itemsEl.innerHTML = '';
-      addLegendItem(itemsEl, '#009de0', "Salas O'Brien Offices");
+      if (officesVisible) addLegendItem(itemsEl, '#009de0', "Salas O'Brien Offices");
       for (const l of uploadLayers) {
         if (!l.visible) continue;
         const color = l.pickr.getColor().toHEXA().toString();
@@ -1092,3 +1130,4 @@
   </script>
 </body>
 </html>
+
