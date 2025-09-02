@@ -19,6 +19,8 @@
   <!-- Turf (fallback + dissolve) -->
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
+
+
   <style>
     :root {
       --brand: #009de0;
@@ -134,16 +136,38 @@
     .layer-card * { max-width: 100%; }
     .layer-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
     .layer-meta { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .badge { font-size: 11px; color: #444; background: #f1f5f9; border:1px solid #e5e7eb; border-radius: 999px; padding: 2px 8px; }
     .layer-name-input { border:1px solid #e5e7eb; border-radius:8px; padding:6px 8px; width: 180px; min-width: 0; }
     .layer-actions { display: flex; align-items: center; gap: 8px; }
-    .icon-btn { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; cursor: pointer; }
-    .icon-btn:hover { background: #f3f4f6; }
+   /* Replace your current .icon-btn block with this */
+.icon-btn{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:8px;
+  width:32px;              /* consistent square */
+  height:32px;             /* consistent square */
+  padding:0;               /* no extra vertical padding */
+  display:inline-flex;     /* center the SVG exactly */
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  line-height:0;           /* kill baseline extra height */
+}
+.icon-btn:hover{ background:#f3f4f6; }
+
+/* Add this so the SVG doesn’t introduce baseline space */
+.icon-btn svg{
+  width:18px;
+  height:18px;
+  display:block;           /* avoid inline baseline gap */
+}
+
     .layer-body { display: grid; gap: 8px; }
     .layer-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .pickr { flex: 0 0 auto; }
     .pickr .pcr-button { width: 24px; height: 24px; border-radius: 6px; }
 
-    /* Legend: transparent, no border/shadow */
+    /* Legend */
     .map-legend {
       position: absolute;
       left: 50%;
@@ -157,7 +181,6 @@
       z-index: 4;
       max-width: min(90%, 900px);
     }
-    /* removed header styling since header removed */
     #legendItems { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px 16px; }
     .legend-item { display: inline-flex; align-items: center; gap: 6px; }
     .legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 0; display: inline-block; }
@@ -217,15 +240,18 @@
     <div class="panel-section" id="layersSection">
       <div class="section-title">Layers</div>
 
-      <!-- Offices legend -->
+      <!-- Offices layer with eye toggle in header -->
       <div class="layer-card" aria-label="Offices layer">
         <div class="layer-header">
           <div class="layer-meta">
             <strong>Salas O'Brien Offices</strong>
+            <span style="font-size:10px; color:#666666">Built-in</span>
           </div>
-          <div class="muted">Built-in</div>
+          <div class="layer-actions">
+            <button class="icon-btn" id="toggle-offices" title="Hide markers" aria-pressed="true"></button>
+          </div>
         </div>
-        <div class="muted">This layer is always present and filterable.</div>
+        <div class="muted">This layer is filterable.</div>
       </div>
 
       <!-- Dynamic upload layers container -->
@@ -233,8 +259,9 @@
 
       <button class="so-btn" id="addLayerBtn" type="button">+ Add Layer</button>
       <div style="height:8px;"></div>
-      <a href="#" id="downloadTemplate" class="muted">Download CSV template</a>
-      <div class="muted" style="margin-top:6px;">Up to 3 additional layers. Each has its own color, name & CSV upload.</div>
+ <a href="#" id="downloadTemplate" class="muted" style="font-weight: bold;">Download CSV template</a>
+<div class="muted" style="margin-top:6px;">Add up to 3 more layers. <br><span style="color:#E35920; font-weight: bold;">NOTE</span> Template use is required.</div>
+
     </div>
 
     <!-- Tools -->
@@ -256,6 +283,12 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 
   <script>
+
+    // Inline SVGs for visibility toggles
+const ICON_EYE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" aria-hidden="true"><path d="M320 96C239.2 96 174.5 132.8 127.4 176.6C80.6 220.1 49.3 272 34.4 307.7C31.1 315.6 31.1 324.4 34.4 332.3C49.3 368 80.6 420 127.4 463.4C174.5 507.1 239.2 544 320 544C400.8 544 465.5 507.2 512.6 463.4C559.4 419.9 590.7 368 605.6 332.3C608.9 324.4 608.9 315.6 605.6 307.7C590.7 272 559.4 220 512.6 176.6C465.5 132.9 400.8 96 320 96zM176 320C176 240.5 240.5 176 320 176C399.5 176 464 240.5 464 320C464 399.5 399.5 464 320 464C240.5 464 176 399.5 176 320zM320 256C320 291.3 291.3 320 256 320C244.5 320 233.7 317 224.3 311.6C223.3 322.5 224.2 333.7 227.2 344.8C240.9 396 293.6 426.4 344.8 412.7C396 399 426.4 346.3 412.7 295.1C400.5 249.4 357.2 220.3 311.6 224.3C316.9 233.6 320 244.4 320 256z"/></svg>`;
+
+const ICON_EYE_OFF = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" width="18" height="18" aria-hidden="true"><path d="M41-24.9c-9.4-9.4-24.6-9.4-33.9 0S-2.3-.3 7 9.1l528 528c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-96.4-96.4c2.7-2.4 5.4-4.8 8-7.2 46.8-43.5 78.1-95.4 93-131.1 3.3-7.9 3.3-16.7 0-24.6-14.9-35.7-46.2-87.7-93-131.1-47.1-43.7-111.8-80.6-192.6-80.6-56.8 0-105.6 18.2-146 44.2L41-24.9zM204.5 138.7c23.5-16.8 52.4-26.7 83.5-26.7 79.5 0 144 64.5 144 144 0 31.1-9.9 59.9-26.7 83.5l-34.7-34.7c12.7-21.4 17-47.7 10.1-73.7-13.7-51.2-66.4-81.6-117.6-67.9-8.6 2.3-16.7 5.7-24 10l-34.7-34.7zM325.3 395.1c-11.9 3.2-24.4 4.9-37.3 4.9-79.5 0-144-64.5-144-144 0-12.9 1.7-25.4 4.9-37.3L69.4 139.2c-32.6 36.8-55 75.8-66.9 104.5-3.3 7.9-3.3 16.7 0 24.6 14.9 35.7 46.2 87.7 93 131.1 47.1 43.7 111.8 80.6 192.6 80.6 37.3 0 71.2-7.9 101.5-20.6l-64.2-64.2z"/></svg>`;
+
     // === Tokens ===
     mapboxgl.accessToken = 'pk.eyJ1IjoiamFjcXVlbGlja3RlaWciLCJhIjoiY21lZDF0aXE0MDVrYzJpcGxxYWJjcjBkaCJ9.FCV2mpRq2iULMEZJbBi0Iw';
     const GOOGLE_MAPS_KEY = "AIzaSyBdVVKVelSKtsN9F6wTh-S57j-r1TbvNXw";
@@ -379,7 +412,37 @@
     function escapeHTML(s='') {
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     }
-    function nl2br(s='') { return escapeHTML(s).replace(/\n|\r\n|\r/g, '<br>'); }
+    function nl2br(s='') { return String(s).replace(/\n|\r\n|\r/g, '<br>'); }
+
+    // Offices eye icon updater
+function updateOfficesToggleIcon(show) {
+  const btn = document.getElementById('toggle-offices');
+  if (!btn) return;
+  btn.innerHTML = show ? ICON_EYE : ICON_EYE_OFF;
+  btn.setAttribute('aria-pressed', String(show));
+  btn.title = show ? 'Hide markers' : 'Show markers';
+}
+
+
+    // Offices visibility helpers
+    function isOfficesVisible() {
+      return map.getLayer(OFFICE_LAYER)
+        ? map.getLayoutProperty(OFFICE_LAYER, 'visibility') !== 'none'
+        : false;
+    }
+    function setOfficesVisibility(show) {
+      if (map.getLayer(OFFICE_LAYER)) {
+        map.setLayoutProperty(OFFICE_LAYER, 'visibility', show ? 'visible' : 'none');
+      }
+      // Hide halos when markers are hidden, rebuild when shown (if reach is enabled)
+      if (!show) {
+        setHaloData(HALO_OFFICES_SOURCE, emptyFC());
+      } else if (reachEnabled) {
+        rebuildOfficeHalos();
+      }
+      updateOfficesToggleIcon(show);
+      updateLegend();
+    }
 
     // Map load
     map.on('load', async () => {
@@ -392,6 +455,17 @@
         map.addLayer({ id: OFFICE_LAYER, type: 'circle', source: OFFICE_SOURCE, paint: { 'circle-radius': 6, 'circle-color': '#009de0' } });
 
         ensureFillLayer(HALO_OFFICES_SOURCE, HALO_OFFICES_FILL, '#009de0', OFFICE_LAYER);
+
+        // Offices eye toggle hookup
+        const officesBtn = document.getElementById('toggle-offices');
+        let officesVisible = true;
+        setOfficesVisibility(officesVisible); // initialize and sync icon
+        if (officesBtn) {
+          officesBtn.addEventListener('click', () => {
+            officesVisible = !isOfficesVisible(); // compute from layer to stay in sync
+            setOfficesVisibility(officesVisible);
+          });
+        }
 
         buildFilters(originalGeojson);
         wireOfficePopups();
@@ -429,10 +503,9 @@
 
       async function applyFilters() {
         const regionsRaw = getSelected(regionSelect);
-        const regions = regionsRaw.map(v => v.split('|')[1]); // just the state/province text
+        const regions = regionsRaw.map(v => v.split('|')[1]);
         const busSel = getSelected(buSelect);
 
-        // Offices
         const filtered = {
           type: 'FeatureCollection',
           features: originalGeojson.features.filter(f => {
@@ -447,9 +520,8 @@
           })
         };
         map.getSource(OFFICE_SOURCE).setData(filtered);
-        if (reachEnabled) await rebuildOfficeHalos(filtered);
+        if (reachEnabled && isOfficesVisible()) await rebuildOfficeHalos(filtered);
 
-        // Apply to any upload layers that opted in
         for (const layer of uploadLayers) {
           if (layer.filterActive) applyFiltersToUploadLayer(layer);
         }
@@ -460,8 +532,7 @@
       document.getElementById('clearFilters').addEventListener('click', () => {
         regionSelect.selectedIndex = -1; buSelect.selectedIndex = -1;
         map.getSource(OFFICE_SOURCE).setData(originalGeojson);
-        if (reachEnabled) rebuildOfficeHalos(originalGeojson);
-        // Reset uploaded layers that are linked
+        if (reachEnabled && isOfficesVisible()) rebuildOfficeHalos(originalGeojson);
         for (const layer of uploadLayers) {
           if (layer.filterActive && layer.originalFC) {
             const src = map.getSource(layer.id);
@@ -473,7 +544,6 @@
       regionSelect.addEventListener('change', applyFilters);
       buSelect.addEventListener('change', applyFilters);
 
-      // helper visible to upload-layers filtering
       window.__getActiveFilters = () => ({
         regions: getSelected(regionSelect).map(v => v.split('|')[1]),
         bus: getSelected(buSelect)
@@ -491,13 +561,11 @@
           if (regions.length && p.state) {
             ok = regions.includes(p.state);
           } else if (regions.length) {
-            ok = false; // if regions selected but item has no state, hide it
+            ok = false;
           }
           if (ok && bus.length && p.bu) {
             ok = bus.includes(p.bu);
           } else if (ok && bus.length && !p.bu) {
-            // if BU filter is selected but upload has no BU, you may decide to hide or show.
-            // Here we keep showing unless you want to hide: change to ok=false to hide.
             ok = true;
           }
           return ok;
@@ -532,7 +600,7 @@
 
     // Rebuild office halos (filtered or full)
     async function rebuildOfficeHalos(sourceData) {
-      if (!reachEnabled) return;
+      if (!reachEnabled || !isOfficesVisible()) return;
       const data = sourceData || map.getSource(OFFICE_SOURCE)._data;
       const pts = data.features.filter(f => f.geometry?.type === 'Point');
       const fc = await buildIsochronesForPoints(pts);
@@ -540,20 +608,26 @@
       setHaloData(HALO_OFFICES_SOURCE, dissolved);
     }
 
-    // Legend (hidden until a user layer exists & is visible)
+    // Legend (hidden until a user layer exists and is visible)
     function updateLegend() {
       const legendEl = document.getElementById('legend');
       const itemsEl  = document.getElementById('legendItems');
 
       const anyUserLayers = uploadLayers.length > 0 && uploadLayers.some(l => l.visible);
+
       if (!anyUserLayers) {
         legendEl.style.display = 'none';
         itemsEl.innerHTML = '';
         return;
       }
+
       legendEl.style.display = '';
       itemsEl.innerHTML = '';
-      addLegendItem(itemsEl, '#009de0', "Salas O'Brien Offices");
+
+      if (isOfficesVisible()) {
+        addLegendItem(itemsEl, '#009de0', "Salas O'Brien Offices");
+      }
+
       for (const l of uploadLayers) {
         if (!l.visible) continue;
         const color = l.pickr.getColor().toHEXA().toString();
@@ -586,7 +660,7 @@
     }
     function normalizeHex(hex) { if (!hex) return '#000000'; return hex.length === 9 ? hex.slice(0, 7) : hex; }
 
-    // --- Interaction shield for color picker (prevents map stealing drags) ---
+    // Interaction shield for color picker
     let __shield = null;
     function showInteractionShield() {
       if (__shield) return;
@@ -637,7 +711,6 @@
       map.addSource(layerId, { type:'geojson', data: emptyFC() });
       map.addLayer({ id: circleLayerId, type: 'circle', source: layerId, paint: { 'circle-radius': 6, 'circle-color': defaultColor } });
 
-      // Create Pickr
       const pickr = Pickr.create({
         el: `#picker-${layerId}`,
         theme: 'classic',
@@ -646,7 +719,7 @@
         components: { preview: true, opacity: false, hue: true, interaction: { hex: true, input: true, save: true, cancel: true } }
       });
 
-      // Upload layer record
+      let visible = true;
       const layerRecord = {
         id: layerId,
         sourceId: layerId,
@@ -660,40 +733,25 @@
       };
       uploadLayers.push(layerRecord);
 
-      // --- Color apply utility (instant chip + map + data) ---
       function applyColorToLayer(hex) {
         const normalized = normalizeHex(hex);
-
-        // Update the small preview chip in the layer card
         const chip = document.querySelector(`#picker-${layerId} .pcr-button`);
         if (chip) chip.style.background = normalized;
-
-        // Also update Pickr's internal button
         const root = pickr.getRoot && pickr.getRoot();
         if (root && root.button) root.button.style.background = normalized;
-
-        // Update map layer
-        if (map.getLayer(circleLayerId)) {
-          map.setPaintProperty(circleLayerId, 'circle-color', normalized);
-        }
-
-        // Update current data colors (if any loaded)
+        if (map.getLayer(circleLayerId)) map.setPaintProperty(circleLayerId, 'circle-color', normalized);
         const src = map.getSource(layerId);
         if (src && layerRecord.currentFC && layerRecord.currentFC.features) {
           layerRecord.currentFC.features.forEach(f => { (f.properties || (f.properties = {})).color = normalized; });
           src.setData(layerRecord.currentFC);
         }
-
-        // Keep originalFC colors in sync (so filtering preserves color)
         if (layerRecord.originalFC && layerRecord.originalFC.features) {
           layerRecord.originalFC.features.forEach(f => { (f.properties || (f.properties = {})).color = normalized; });
           if (layerRecord.filterActive) applyFiltersToUploadLayer(layerRecord);
         }
-
         updateLegend();
       }
 
-      // Pickr events: live updates (no need to press Save)
       pickr.on('init', () => {
         const hex = normalizeHex(pickr.getColor().toHEXA().toString() || defaultColor);
         applyColorToLayer(hex);
@@ -702,7 +760,6 @@
       pickr.on('swatchselect', (c) => { applyColorToLayer(c.toHEXA().toString()); });
       pickr.on('save', () => { pickr.hide(); });
 
-      // Interaction shield while picker is open
       const mapCanvas = map.getCanvas();
       function restoreAfterPickr() {
         hideInteractionShield();
@@ -719,15 +776,21 @@
       pickr.on('cancel', restoreAfterPickr);
       pickr.on('hide',   restoreAfterPickr);
 
-      // Visibility toggle
-      let visible = true;
-      document.getElementById(`toggle-${layerId}`).addEventListener('click', () => {
-        visible = !visible;
-        map.setLayoutProperty(circleLayerId, 'visibility', visible ? 'visible' : 'none');
-        updateLegend();
-      });
+const toggleBtn = document.getElementById(`toggle-${layerId}`);
+toggleBtn.innerHTML = ICON_EYE;           // initial icon
+toggleBtn.setAttribute('aria-pressed', 'true');  // added
 
-      // Remove layer
+toggleBtn.addEventListener('click', () => {
+  visible = !visible;
+  map.setLayoutProperty(circleLayerId, 'visibility', visible ? 'visible' : 'none');
+  toggleBtn.innerHTML = visible ? ICON_EYE : ICON_EYE_OFF;
+  toggleBtn.setAttribute('aria-pressed', String(visible));  // added
+  toggleBtn.title = visible ? 'Hide markers' : 'Show markers';
+  updateLegend();
+});
+
+
+
       document.getElementById(`remove-${layerId}`).addEventListener('click', () => {
         card.remove();
         if (map.getLayer(circleLayerId)) map.removeLayer(circleLayerId);
@@ -737,10 +800,8 @@
         layerCount--; addLayerBtn.disabled = false; updateLegend();
       });
 
-      // Legend name live update
       document.getElementById(`name-${layerId}`).addEventListener('input', updateLegend);
 
-      // Filter link toggle
       const linkChk = document.getElementById(`link-${layerId}`);
       linkChk.addEventListener('change', () => {
         layerRecord.filterActive = linkChk.checked;
@@ -754,7 +815,6 @@
         }
       });
 
-      // File input wiring
       const fileInput = document.getElementById(`file-${layerId}`);
       const perLayerStatus = document.getElementById(statusId);
       fileInput.addEventListener('change', (e) => handleCSVUpload(e, layerRecord, perLayerStatus));
@@ -827,7 +887,6 @@
             }
 
             wireUploadLayerPopups(layerRecord.id);
-            // if linked to filters, apply them now
             if (layerRecord.filterActive) applyFiltersToUploadLayer(layerRecord);
 
             updateLegend();
@@ -835,7 +894,6 @@
             console.error(err);
             statusEl.textContent = "❌ Upload failed.";
           } finally {
-            // allow re-uploading the same file
             input.value = "";
           }
         },
@@ -861,21 +919,18 @@
       map.on('mouseleave', circleId, () => { map.getCanvas().style.cursor = ''; popup.remove(); });
     }
 
-    // ===== Export (fixed viewfinder; pan/zoom map underneath; exact 21.278:12.889) =====
+    // ===== Export (crop frame and legend capture) =====
     document.getElementById('exportMap').addEventListener('click', () => {
       const panel = document.getElementById('panel');
       const controls = document.querySelectorAll('.mapboxgl-ctrl');
 
-      // Hide visually but keep layout (prevents any map reflow/zoom change)
       const prevPanelVis = panel.style.visibility;
       panel.style.visibility = 'hidden';
       const prevCtrlVis = [];
       controls.forEach((c, i) => { prevCtrlVis[i] = c.style.visibility; c.style.visibility = 'hidden'; });
 
-      // DO NOT call map.resize()
+      const TARGET_AR = 21.278 / 12.889;
 
-      // Fixed crop frame; overlay is click-through so map can pan/zoom
-      const TARGET_AR = 21.278 / 12.889; // ≈ 1.650865
       const overlay = document.createElement('div');
       overlay.style.cssText = 'position:fixed; inset:0; z-index:9999; pointer-events:none;';
 
@@ -883,18 +938,18 @@
       Object.assign(frame.style, {
         position: 'absolute',
         top: '50%', left: '50%',
-        width: '80%',                 // initial width
+        width: '80%',
         aspectRatio: String(TARGET_AR),
         transform: 'translate(-50%, -50%)',
         outline: '2px dashed #666',
         outlineOffset: '0',
-        pointerEvents: 'none',         // clicks go to the map
+        pointerEvents: 'none',
         boxSizing: 'border-box'
       });
       overlay.appendChild(frame);
 
       const hint = document.createElement('div');
-      hint.textContent = 'Pan/zoom the map to compose. Resize frame with the slider.';
+      hint.textContent = 'Pan and zoom the map, then confirm.';
       Object.assign(hint.style, {
         position: 'absolute', top: '15px', left: '50%', transform: 'translateX(-50%)',
         fontSize: '14px', color: '#fff', background: 'rgba(0,0,0,0.6)',
@@ -902,7 +957,6 @@
       });
       overlay.appendChild(hint);
 
-      // Controls (pointer-enabled)
       const controlsWrap = document.createElement('div');
       Object.assign(controlsWrap.style, {
         position: 'absolute', bottom: '20px', right: '20px',
@@ -964,7 +1018,6 @@
           const mapRect   = mapCanvas.getBoundingClientRect();
           const boxRect   = frame.getBoundingClientRect();
 
-          // Convert frame rect (CSS px) -> map canvas px
           const cx = mapCanvas.width  / mapRect.width;
           const cy = mapCanvas.height / mapRect.height;
 
@@ -973,7 +1026,6 @@
           let sw = boxRect.width  * cx;
           let sh = boxRect.height * cy;
 
-          // Snap & clamp
           sx = Math.max(0, Math.floor(sx));
           sy = Math.max(0, Math.floor(sy));
           const ex = Math.min(mapCanvas.width,  Math.ceil(sx + sw));
@@ -981,20 +1033,18 @@
           sw = Math.max(1, ex - sx);
           sh = Math.max(1, ey - sy);
 
-          // Export canvas exactly at crop size
           const exportCanvas = document.createElement('canvas');
           exportCanvas.width = sw;
           exportCanvas.height = sh;
           const ctx = exportCanvas.getContext('2d', { alpha: false });
           ctx.imageSmoothingEnabled = false;
 
-          // Draw map crop
           ctx.drawImage(mapCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
 
-          // === Legend capture (transparent; EXACT 30px bottom margin; centered horizontally) ===
+          // Legend capture
           const legendEl = document.getElementById('legend');
           if (legendEl && legendEl.style.display !== 'none') {
-            const scaleLegend = mapCanvas.width / mapRect.width; // CSS→canvas scale
+            const scaleLegend = mapCanvas.width / mapRect.width;
             const lr = legendEl.getBoundingClientRect();
 
             const legendCanvas = await html2canvas(legendEl, {
@@ -1008,13 +1058,10 @@
             const legendW = Math.round(lr.width * scaleLegend);
             const legendH = Math.round(lr.height * scaleLegend);
 
-            // horizontally center inside the crop
             let lmx = Math.round((sw - legendW) / 2);
-            // 30px bottom margin inside the crop
             const desiredBottom = Math.round(30 * scaleLegend);
             let lmy = Math.max(0, sh - desiredBottom - legendH);
 
-            // Clamp just in case
             lmx = Math.max(0, Math.min(lmx, sw - legendW));
             lmy = Math.max(0, Math.min(lmy, sh - legendH));
 
@@ -1024,7 +1071,6 @@
             ctx.imageSmoothingEnabled = prevSmooth;
           }
 
-          // Save
           const url = exportCanvas.toDataURL('image/png');
           const a = document.createElement('a');
           a.href = url;
@@ -1066,7 +1112,7 @@
 
       if (originalGeojson) map.getSource(OFFICE_SOURCE).setData(originalGeojson);
 
-      if (reachEnabled) rebuildOfficeHalos(originalGeojson);
+      if (reachEnabled && isOfficesVisible()) rebuildOfficeHalos(originalGeojson);
       else setHaloData(HALO_OFFICES_SOURCE, emptyFC());
 
       updateLegend();
