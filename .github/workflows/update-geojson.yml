@@ -15,15 +15,16 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Fetch GeoJSON from Google Apps Script
-        run: |
-          curl -s "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec" -o offices.geojson
-          ls -lh offices.geojson
+   - name: Fetch GeoJSON from Apps Script
+  run: |
+    curl -sL "https://script.google.com/macros/s/AKfycbxImoosV5mh05LmYJhrvB-Z9EQ97HcublGuH683gYXg2W2Mden6tJ6j9-RP6puMyU6D/exec" -o offices.geojson
 
-      - name: Commit and push
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add offices.geojson
-          git commit -m "Update offices.geojson [skip ci]" || echo "No changes to commit"
-          git push
+
+- name: Commit and push changes
+  run: |
+    git config user.name "github-actions[bot]"
+    git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+    git add offices.geojson
+    git commit -m "Update offices.geojson" || echo "No changes"
+    git push
+
