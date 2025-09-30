@@ -2139,6 +2139,29 @@
         "Last Synced Address": "",
         "On Connect": ""
       }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -95.2924795,
+          32.3023683
+        ]
+      },
+      "properties": {
+        "DIVISION": "BES-Central",
+        "BU": "BE-South",
+        "COUNTRY": "US",
+        "OFFICE NAME": "Tyler",
+        "STATE / PROVINCE": "Texas",
+        "MAIN PHONE": "1.214.316.1818",
+        "ADDRESS": "821 East Southeast Loop 323, Suite 350\nTyler, TX 75701",
+        "Latitude": 32.3023683,
+        "Longitude": -95.2924795,
+        "Last Synced Address": "",
+        "On Connect": ""
+      }
     }
   ]
 }
