@@ -188,10 +188,55 @@
       display:none;
       z-index:10;
     }
+	
+	.ol-zoom {
+  top: auto !important;
+  bottom: 20px !important;
+  left: auto !important;
+  right: 20px !important;
+}
   </style>
 </head>
 <body>
   <aside id="panel">
+  
+  <div class="panel-section">
+  <div class="section-title">Office Marker Filters</div>
+
+  <div class="accordion">
+    <div class="accordion-header" aria-expanded="false">
+      <span>State / Province</span>
+      <span class="chev"></span>
+    </div>
+    <div class="accordion-body">
+      <label class="subhead">(Ctrl/Cmd + click for multiple)</label>
+      <div style="margin-top: 6px; margin-bottom: 6px;">
+        <input type="text" id="regionSearchBox" placeholder="Search..." style="width: 100%; padding: 6px 8px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px;">
+      </div>
+      <select id="regionFilter" multiple></select>
+      <div style="margin-top:8px; display:flex; gap:8px;">
+        <button class="so-btn" id="clearRegion">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion">
+    <div class="accordion-header" aria-expanded="false">
+      <span>Business Unit</span>
+      <span class="chev"></span>
+    </div>
+    <div class="accordion-body">
+      <select id="buFilter" multiple size="6"></select>
+      <div style="margin-top:8px; display:flex; gap:8px;">
+        <button class="so-btn" id="clearBU">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="hr"></div>
+  <button class="so-btn" id="clearFilters">Clear All Filters</button>
+</div>
+
     <div class="panel-section">
       <div class="section-title">Coverage (3-hour drive)</div>
       <div class="segmented">
@@ -200,50 +245,32 @@
       </div>
       <div class="muted" style="margin-top:6px;">Shows a 3-hour driving area around offices.</div>
     </div>
-
-    <div class="panel-section">
-      <div class="section-title">Filters</div>
-
-      <div class="accordion">
-        <div class="accordion-header" aria-expanded="false">
-          <span>State / Province</span>
-          <span class="chev"></span>
-        </div>
-        <div class="accordion-body">
-          <label class="subhead">(Ctrl/Cmd + click for multiple)</label>
-          <select id="regionFilter" multiple></select>
-          <div style="margin-top:8px; display:flex; gap:8px;">
-            <button class="so-btn" id="clearRegion">Clear</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="accordion">
-        <div class="accordion-header" aria-expanded="false">
-          <span>Business Unit</span>
-          <span class="chev"></span>
-        </div>
-        <div class="accordion-body">
-          <select id="buFilter" multiple size="6"></select>
-          <div style="margin-top:8px; display:flex; gap:8px;">
-            <button class="so-btn" id="clearBU">Clear</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="hr"></div>
-      <button class="so-btn" id="clearFilters">Clear All Filters</button>
+	
+<div class="panel-section">
+  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+    <input type="checkbox" id="hideStatesCheckbox" style="width: auto;">
+    <span>Only show specific states / provinces</span>
+  </label>
+  <div id="statesSelectContainer" style="display:none; margin-top:10px;">
+    <label class="subhead">Select which to display (Ctrl/Cmd + click for multiple)</label>
+    <div style="margin-top: 6px;">
+      <input type="text" id="statesSearchBox" placeholder="Search..." style="width: 100%; padding: 6px 8px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 6px; font-size: 13px;">
     </div>
-
-    <div class="panel-section">
+    <select id="statesSelect" multiple size="10" style="margin-top: 0;"></select>
+    <div style="margin-top:8px; display: flex; gap: 8px;">
+      <button class="so-btn" style="flex: 1;" id="selectAllStates">Select All</button>
+      <button class="so-btn" style="flex: 1;" id="clearStatesSelection">Clear</button>
+    </div>
+  </div>
+</div>
+   <div class="panel-section">
       <div class="section-title">Layers</div>
 
       <div class="layer-card">
         <div class="layer-header">
           <div class="layer-meta">
             <strong>Salas O'Brien Offices</strong>
-            <span style="font-size:10px; color:#666">Built-in</span>
-          </div>
+             </div>
           <div class="layer-actions">
             <button class="icon-btn" id="toggle-offices" title="Toggle visibility"></button>
           </div>
@@ -281,22 +308,56 @@
     const ICON_EYE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 96C239.2 96 174.5 132.8 127.4 176.6C80.6 220.1 49.3 272 34.4 307.7C31.1 315.6 31.1 324.4 34.4 332.3C49.3 368 80.6 420 127.4 463.4C174.5 507.1 239.2 544 320 544C400.8 544 465.5 507.2 512.6 463.4C559.4 419.9 590.7 368 605.6 332.3C608.9 324.4 608.9 315.6 605.6 307.7C590.7 272 559.4 220 512.6 176.6C465.5 132.9 400.8 96 320 96zM176 320C176 240.5 240.5 176 320 176C399.5 176 464 240.5 464 320C464 399.5 399.5 464 320 464C240.5 464 176 399.5 176 320zM320 256C320 291.3 291.3 320 256 320C244.5 320 233.7 317 224.3 311.6C223.3 322.5 224.2 333.7 227.2 344.8C240.9 396 293.6 426.4 344.8 412.7C396 399 426.4 346.3 412.7 295.1C400.5 249.4 357.2 220.3 311.6 224.3C316.9 233.6 320 244.4 320 256z"/></svg>`;
     const ICON_EYE_OFF = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><path d="M41-24.9c-9.4-9.4-24.6-9.4-33.9 0S-2.3-.3 7 9.1l528 528c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-96.4-96.4c2.7-2.4 5.4-4.8 8-7.2 46.8-43.5 78.1-95.4 93-131.1 3.3-7.9 3.3-16.7 0-24.6-14.9-35.7-46.2-87.7-93-131.1-47.1-43.7-111.8-80.6-192.6-80.6-56.8 0-105.6 18.2-146 44.2L41-24.9zM204.5 138.7c23.5-16.8 52.4-26.7 83.5-26.7 79.5 0 144 64.5 144 144 0 31.1-9.9 59.9-26.7 83.5l-34.7-34.7c12.7-21.4 17-47.7 10.1-73.7-13.7-51.2-66.4-81.6-117.6-67.9-8.6 2.3-16.7 5.7-24 10l-34.7-34.7zM325.3 395.1c-11.9 3.2-24.4 4.9-37.3 4.9-79.5 0-144-64.5-144-144 0-12.9 1.7-25.4 4.9-37.3L69.4 139.2c-32.6 36.8-55 75.8-66.9 104.5-3.3 7.9-3.3 16.7 0 24.6 14.9 35.7 46.2 87.7 93 131.1 47.1 43.7 111.8 80.6 192.6 80.6 37.3 0 71.2-7.9 101.5-20.6l-64.2-64.2z"/></svg>`;
 
-    // Projection setup
-    proj4.defs("EPSG:102009", "+proj=lcc +lat_1=33 +lat_2=45 +lat_0=39 +lon_0=-96 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs");
-    ol.proj.proj4.register(proj4);
-    const lccProjection = ol.proj.get("EPSG:102009");
+ // Projection setup - Albers Equal Area Conic
+proj4.defs("EPSG:5070", "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=37.5 +lon_0=-96 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs");
+ol.proj.proj4.register(proj4);
+const albersProjection = ol.proj.get("EPSG:5070");
 
     // Layers
-    const baseLayer = new ol.layer.Vector({
-      source: new ol.source.Vector({
-        url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/mapbase.geojson",
-        format: new ol.format.GeoJSON()
-      }),
-      style: new ol.style.Style({
-        stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
-        fill: new ol.style.Fill({ color: "#EDEDED" })
-      })
+const statesProvincesLayer = new ol.layer.Vector({
+  source: new ol.source.Vector({
+    url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/statesandprovinces.geojson",
+    format: new ol.format.GeoJSON(),
+	wrapX: false  
+  }),
+  style: function(feature) {
+    const admin = feature.get('admin');
+  const isNorthAmerica = admin === 'Canada' || admin === 'United States of America';
+if (!isNorthAmerica) return null;
+    return new ol.style.Style({
+      stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
+      fill: new ol.style.Fill({ color: "#EDEDED" })
     });
+  }
+});
+
+const greatLakesLayer = new ol.layer.Vector({
+  source: new ol.source.Vector({
+    url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/greatlakes.geojson",
+    format: new ol.format.GeoJSON()
+  }),
+  style: new ol.style.Style({
+    stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
+    fill: new ol.style.Fill({ color: "#FFFFFF" })
+  })
+});
+
+const countriesLayer = new ol.layer.Vector({
+  source: new ol.source.Vector({
+    url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/countries.geojson",
+    format: new ol.format.GeoJSON(),
+	wrapX: false  
+  }),
+  style: function(feature) {
+    const name = feature.get('NAME');
+    const isVisible = name === 'Canada' || name === 'United States of America';
+    if (!isVisible) return null; // Hide by default
+    return new ol.style.Style({
+      stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 1 }),
+      fill: new ol.style.Fill({ color: "transparent" })
+    });
+  }
+});
 
     const haloLayer = new ol.layer.Vector({
       source: new ol.source.Vector(),
@@ -321,10 +382,10 @@
 
     const map = new ol.Map({
       target: 'map',
-      layers: [baseLayer, haloLayer, officeLayer],
+      layers: [statesProvincesLayer, greatLakesLayer, countriesLayer, haloLayer, officeLayer],
       view: new ol.View({
-        projection: lccProjection,
-        center: ol.proj.fromLonLat([-105, 42], lccProjection),
+        projection: albersProjection,
+        center: ol.proj.fromLonLat([-105, 42], albersProjection),
         zoom: 5.25
       })
     });
@@ -343,7 +404,7 @@
     // State
     let originalGeojson = null;
     let reachEnabled = false;
-    let layerCount = 0;
+	let layerCount = 0;
     const MAX_LAYERS = 3;
     const uploadLayers = [];
     const isoCache = new Map();
@@ -425,7 +486,7 @@
     function setHaloData(fc) {
       const format = new ol.format.GeoJSON();
       const features = format.readFeatures(fc, {
-        featureProjection: lccProjection,
+        featureProjection: albersProjection,
         dataProjection: 'EPSG:4326'
       });
       haloLayer.getSource().clear();
@@ -444,7 +505,7 @@
       } else {
         const format = new ol.format.GeoJSON();
         const gj = format.writeFeaturesObject(officeLayer.getSource().getFeatures(), {
-          featureProjection: lccProjection,
+          featureProjection: albersProjection,
           dataProjection: 'EPSG:4326'
         });
         features = gj.features;
@@ -476,7 +537,9 @@
 
     document.getElementById('reachOn').addEventListener('click', () => setReach(true));
     document.getElementById('reachOff').addEventListener('click', () => setReach(false));
-
+	
+    
+   
     // Office visibility toggle
     function updateOfficesToggleIcon(show) {
       const btn = document.getElementById('toggle-offices');
@@ -501,13 +564,250 @@
 
     // Initialize
     setOfficesVisibility(true);
+	
+	// States & Provinces functionality
+let allUSStates = new Set();
+let allCanadaProvinces = new Set();
+let selectedStatesProvinces = new Set();
+let allStatesData = []; // Store for filtering
 
-    // Load offices data
+// Load states and provinces list
+statesProvincesLayer.getSource().once('change', function() {
+  if (statesProvincesLayer.getSource().getState() === 'ready') {
+    statesProvincesLayer.getSource().getFeatures().forEach(f => {
+      const admin = f.get('admin');
+      const name = f.get('name');
+      
+      if (admin === 'United States of America' && name) {
+        allUSStates.add(name);
+        allStatesData.push({ name, country: 'US' });
+      } else if (admin === 'Canada' && name) {
+        allCanadaProvinces.add(name);
+        allStatesData.push({ name, country: 'CA' });
+      }
+    });
+    buildStatesSelect();
+  }
+});
+
+function buildStatesSelect(filter = '') {
+  const select = document.getElementById('statesSelect');
+  
+  // Don't rebuild if just filtering - use display property instead
+  if (select.options.length > 0 && filter) {
+    const filterLower = filter.toLowerCase();
+    const optgroups = select.querySelectorAll('optgroup');
+    
+    optgroups.forEach(group => {
+      let hasVisibleOptions = false;
+      const options = group.querySelectorAll('option');
+      
+      options.forEach(opt => {
+        const matches = opt.textContent.toLowerCase().includes(filterLower);
+        opt.style.display = matches ? '' : 'none';
+        if (matches) hasVisibleOptions = true;
+      });
+      
+      group.style.display = hasVisibleOptions ? '' : 'none';
+    });
+    return;
+  }
+  
+  // Only rebuild when initially building or clearing filter
+  select.innerHTML = '';
+  
+  const filterLower = filter.toLowerCase();
+  
+    
+  // US group
+  const usGroup = document.createElement('optgroup');
+  usGroup.label = 'United States';
+  const usFiltered = Array.from(allUSStates)
+    .filter(s => !filter || s.toLowerCase().includes(filterLower))
+    .sort();
+  
+  usFiltered.forEach(state => {
+    const option = document.createElement('option');
+    option.value = state;
+    option.textContent = state;
+    if (selectedStatesProvinces.has(state)) {
+      option.selected = true;
+    }
+    usGroup.appendChild(option);
+  });
+  if (usFiltered.length > 0) select.appendChild(usGroup);
+}
+
+// Canada group
+  const caGroup = document.createElement('optgroup');
+  caGroup.label = 'Canada';
+  const caFiltered = Array.from(allCanadaProvinces)
+    .filter(p => !filter || p.toLowerCase().includes(filterLower))
+    .sort();
+  
+  caFiltered.forEach(prov => {
+    const option = document.createElement('option');
+    option.value = prov;
+    option.textContent = prov;
+    if (selectedStatesProvinces.has(prov)) {
+      option.selected = true;
+    }
+    caGroup.appendChild(option);
+  });
+  if (caFiltered.length > 0) select.appendChild(caGroup);
+
+function updateStatesVisibility() {
+  const isHidden = document.getElementById('hideStatesCheckbox').checked;
+  greatLakesLayer.setVisible(!isHidden);
+  
+  // Update the style function dynamically
+  statesProvincesLayer.setStyle(function(feature) {
+    const admin = feature.get('admin');
+    const isNorthAmerica = admin === 'Canada' || admin === 'United States of America';
+    if (!isNorthAmerica) return null;
+    
+    const stateName = feature.get('name');
+    
+    // If checkbox unchecked, show all North American states
+    if (!isHidden) {
+      return new ol.style.Style({
+        stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
+        fill: new ol.style.Fill({ color: "#EDEDED" })
+      });
+    }
+    
+    // If checkbox checked, only show selected states
+    if (selectedStatesProvinces.has(stateName)) {
+      return new ol.style.Style({
+        stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
+        fill: new ol.style.Fill({ color: "#EDEDED" })
+      });
+    }
+    
+    return null;
+  });
+  
+  countriesLayer.changed();
+}
+
+// Search box functionality
+document.getElementById('statesSearchBox').addEventListener('input', function(e) {
+  buildStatesSelect(e.target.value);
+});
+
+document.getElementById('hideStatesCheckbox').addEventListener('change', function(e) {
+  const container = document.getElementById('statesSelectContainer');
+  const isHidden = e.target.checked;
+  
+  container.style.display = isHidden ? 'block' : 'none';
+  
+  if (!isHidden) {
+    // Unchecked - show all states/provinces again
+    selectedStatesProvinces.clear();
+    document.getElementById('statesSelect').selectedIndex = -1;
+    document.getElementById('statesSearchBox').value = '';
+    buildStatesSelect();
+    statesProvincesLayer.setVisible(true);
+    countriesLayer.setVisible(true);
+	 // Restore all offices
+  if (originalGeojson) {
+    const format = new ol.format.GeoJSON();
+    const features = format.readFeatures(originalGeojson, {
+      featureProjection: albersProjection,
+      dataProjection: 'EPSG:4326'
+    });
+    officeLayer.getSource().clear();
+    officeLayer.getSource().addFeatures(features);
+  }
+    setOfficesVisibility(true);
+  } else {
+    // Checked - hide everything until states are selected
+    statesProvincesLayer.setVisible(false);
+    countriesLayer.setVisible(false);
+    setOfficesVisibility(false);
+  }
+  
+  updateStatesVisibility();
+});
+
+// Select handling
+document.getElementById('statesSelect').addEventListener('change', function(e) {
+  selectedStatesProvinces.clear();
+  Array.from(e.target.selectedOptions).forEach(opt => {
+    selectedStatesProvinces.add(opt.value);
+  });
+  
+  if (selectedStatesProvinces.size > 0) {
+    // Show the layers
+    statesProvincesLayer.setVisible(true);
+    
+    // Filter offices to only show those in selected states/provinces
+    if (originalGeojson) {
+      const filtered = {
+        type: 'FeatureCollection',
+        features: originalGeojson.features.filter(f => {
+          const stateProvince = f.properties["STATE / PROVINCE"];
+          return selectedStatesProvinces.has(stateProvince);
+        })
+      };
+      
+      const format = new ol.format.GeoJSON();
+      const features = format.readFeatures(filtered, {
+        featureProjection: albersProjection,
+        dataProjection: 'EPSG:4326'
+      });
+      officeLayer.getSource().clear();
+      officeLayer.getSource().addFeatures(features);
+      setOfficesVisibility(true);
+    }
+  }
+  
+  updateStatesVisibility();
+});
+
+// Select All button
+document.getElementById('selectAllStates').addEventListener('click', function() {
+  const select = document.getElementById('statesSelect');
+  selectedStatesProvinces.clear();
+  Array.from(select.options).forEach(opt => {
+    opt.selected = true;
+    selectedStatesProvinces.add(opt.value);
+  });
+  updateStatesVisibility();
+});
+
+// Clear button
+document.getElementById('clearStatesSelection').addEventListener('click', function() {
+  selectedStatesProvinces.clear();
+  document.getElementById('statesSelect').selectedIndex = -1;
+  document.getElementById('statesSearchBox').value = ''; // ADD THIS LINE
+  document.getElementById('hideStatesCheckbox').checked = false; // ADD THIS LINE
+  document.getElementById('statesSelectContainer').style.display = 'none'; // ADD THIS LINE
+  
+  statesProvincesLayer.setVisible(true); // ADD THIS LINE
+  countriesLayer.setVisible(true); // ADD THIS LINE
+  
+  // Restore all offices
+  if (originalGeojson) {
+    const format = new ol.format.GeoJSON();
+    const features = format.readFeatures(originalGeojson, {
+      featureProjection: albersProjection,
+      dataProjection: 'EPSG:4326'
+    });
+    officeLayer.getSource().clear();
+    officeLayer.getSource().addFeatures(features);
+  }
+  
+  setOfficesVisibility(true); // ADD THIS LINE
+  updateStatesVisibility();
+});
+
+	    // Load offices data
     officeLayer.getSource().once('change', function() {
       if (officeLayer.getSource().getState() === 'ready') {
         const format = new ol.format.GeoJSON();
         originalGeojson = format.writeFeaturesObject(officeLayer.getSource().getFeatures(), {
-          featureProjection: lccProjection,
+          featureProjection: albersProjection,
           dataProjection: 'EPSG:4326'
         });
         buildFilters(originalGeojson);
@@ -524,15 +824,6 @@
       const provinces = [...new Set(gj.features.filter(f => f.properties.COUNTRY === 'CAN').map(f => f.properties["STATE / PROVINCE"]).filter(Boolean))].sort();
       const bus = [...new Set(gj.features.map(f => f.properties.BU).filter(Boolean))].sort();
 
-      const caGroup = document.createElement('optgroup');
-      caGroup.label = 'Canada';
-      provinces.forEach(p => {
-        const o = document.createElement('option');
-        o.value = 'CAN|' + p;
-        o.textContent = p;
-        caGroup.appendChild(o);
-      });
-
       const usGroup = document.createElement('optgroup');
       usGroup.label = 'United States';
       states.forEach(s => {
@@ -541,9 +832,41 @@
         o.textContent = s;
         usGroup.appendChild(o);
       });
+	  
+	  const caGroup = document.createElement('optgroup');
+      caGroup.label = 'Canada';
+      provinces.forEach(p => {
+        const o = document.createElement('option');
+        o.value = 'CAN|' + p;
+        o.textContent = p;
+        caGroup.appendChild(o);
+      });
 
-      regionSelect.appendChild(caGroup);
+
+     
       regionSelect.appendChild(usGroup);
+	  regionSelect.appendChild(caGroup);
+
+// Add search functionality for region filter
+document.getElementById('regionSearchBox').addEventListener('input', function(e) {
+  const filterText = e.target.value.toLowerCase();
+  const optgroups = regionSelect.querySelectorAll('optgroup');
+  
+  optgroups.forEach(group => {
+    const options = group.querySelectorAll('option');
+    let hasVisibleOptions = false;
+    
+    options.forEach(opt => {
+      const text = opt.textContent.toLowerCase();
+      const matches = text.includes(filterText);
+      opt.style.display = matches ? '' : 'none';
+      if (matches) hasVisibleOptions = true;
+    });
+    
+    // Hide the optgroup if none of its options match
+    group.style.display = hasVisibleOptions ? '' : 'none';
+  });
+});
 
       bus.forEach(b => {
         const o = document.createElement('option');
@@ -577,7 +900,7 @@
 
         const format = new ol.format.GeoJSON();
         const features = format.readFeatures(filtered, {
-          featureProjection: lccProjection,
+          featureProjection: albersProjection,
           dataProjection: 'EPSG:4326'
         });
         officeLayer.getSource().clear();
@@ -586,8 +909,17 @@
         if (reachEnabled && officeLayer.getVisible()) await rebuildOfficeHalos(filtered);
       }
 
-      document.getElementById('clearRegion').addEventListener('click', () => {
+document.getElementById('clearRegion').addEventListener('click', () => {
         regionSelect.selectedIndex = -1;
+        document.getElementById('regionSearchBox').value = '';
+        // Show all options again
+        const optgroups = regionSelect.querySelectorAll('optgroup');
+        optgroups.forEach(group => {
+          group.style.display = '';
+          group.querySelectorAll('option').forEach(opt => {
+            opt.style.display = '';
+          });
+        });
         applyFilters();
       });
       document.getElementById('clearBU').addEventListener('click', () => {
@@ -599,7 +931,7 @@
         buSelect.selectedIndex = -1;
         const format = new ol.format.GeoJSON();
         const features = format.readFeatures(originalGeojson, {
-          featureProjection: lccProjection,
+          featureProjection: albersProjection,
           dataProjection: 'EPSG:4326'
         });
         officeLayer.getSource().clear();
@@ -826,7 +1158,7 @@
 
             if (isFinite(lat) && isFinite(lng)) {
               const feature = new ol.Feature({
-                geometry: new ol.geom.Point(ol.proj.fromLonLat([lng, lat], lccProjection))
+                geometry: new ol.geom.Point(ol.proj.fromLonLat([lng, lat], albersProjection))
               });
               
               // Set properties
@@ -897,11 +1229,17 @@
 
       document.getElementById('regionFilter').selectedIndex = -1;
       document.getElementById('buFilter').selectedIndex = -1;
+	  document.getElementById('hideStatesCheckbox').checked = false;
+document.getElementById('statesSelectContainer').style.display = 'none';
+selectedStatesProvinces.clear();
+document.getElementById('statesSearchBox').value = '';
+buildStatesSelect();
+updateStatesVisibility();
 
-      if (originalGeojson) {
+	      if (originalGeojson) {
         const format = new ol.format.GeoJSON();
         const features = format.readFeatures(originalGeojson, {
-          featureProjection: lccProjection,
+          featureProjection: albersProjection,
           dataProjection: 'EPSG:4326'
         });
         officeLayer.getSource().clear();
