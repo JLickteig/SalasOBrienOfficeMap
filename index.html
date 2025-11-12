@@ -592,40 +592,38 @@ statesProvincesLayer.getSource().once('change', function() {
 
 function buildStatesSelect(filter = '') {
   const select = document.getElementById('statesSelect');
-  
-  // Don't rebuild if just filtering - use display property instead
+
+  // If we already have options and just want to text-filter, hide/show instead of rebuilding
   if (select.options.length > 0 && filter) {
     const filterLower = filter.toLowerCase();
     const optgroups = select.querySelectorAll('optgroup');
-    
+
     optgroups.forEach(group => {
       let hasVisibleOptions = false;
       const options = group.querySelectorAll('option');
-      
+
       options.forEach(opt => {
         const matches = opt.textContent.toLowerCase().includes(filterLower);
         opt.style.display = matches ? '' : 'none';
         if (matches) hasVisibleOptions = true;
       });
-      
+
       group.style.display = hasVisibleOptions ? '' : 'none';
     });
     return;
   }
-  
-  // Only rebuild when initially building or clearing filter
+
+  // Full rebuild (initial or cleared search)
   select.innerHTML = '';
-  
   const filterLower = filter.toLowerCase();
-  
-    
-  // US group
+
+  // United States group
   const usGroup = document.createElement('optgroup');
   usGroup.label = 'United States';
   const usFiltered = Array.from(allUSStates)
     .filter(s => !filter || s.toLowerCase().includes(filterLower))
     .sort();
-  
+
   usFiltered.forEach(state => {
     const option = document.createElement('option');
     option.value = state;
@@ -636,15 +634,14 @@ function buildStatesSelect(filter = '') {
     usGroup.appendChild(option);
   });
   if (usFiltered.length > 0) select.appendChild(usGroup);
-}
 
-// Canada group
+  // Canada group
   const caGroup = document.createElement('optgroup');
   caGroup.label = 'Canada';
   const caFiltered = Array.from(allCanadaProvinces)
     .filter(p => !filter || p.toLowerCase().includes(filterLower))
     .sort();
-  
+
   caFiltered.forEach(prov => {
     const option = document.createElement('option');
     option.value = prov;
@@ -655,6 +652,7 @@ function buildStatesSelect(filter = '') {
     caGroup.appendChild(option);
   });
   if (caFiltered.length > 0) select.appendChild(caGroup);
+}
 
 function updateStatesVisibility() {
   const isHidden = document.getElementById('hideStatesCheckbox').checked;
@@ -687,7 +685,7 @@ function updateStatesVisibility() {
     return null;
   });
   
-  countriesLayer.changed();
+  stateProvincesLayer.changed();
 }
 
 // Search box functionality
@@ -1432,3 +1430,4 @@ updateStatesVisibility();
   </script>
 </body>
 </html>
+
