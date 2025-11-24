@@ -2254,6 +2254,75 @@
         "Last Synced Address": "",
         "On Connect": ""
       }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.94133099999999,
+          42.8129285
+        ]
+      },
+      "properties": {
+        "DIVISION": "BEN-Central",
+        "BU": "BE-North",
+        "COUNTRY": "US",
+        "OFFICE NAME": "Schenectady",
+        "STATE / PROVINCE": "New York",
+        "MAIN PHONE": "1.518.533.2171",
+        "ADDRESS": "433 State Street, 4th Floor\nSchenectady, NY 12305",
+        "Latitude": 42.8129285,
+        "Longitude": -73.94133099999999,
+        "Last Synced Address": "",
+        "On Connect": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.68166169999999,
+          43.17182200000001
+        ]
+      },
+      "properties": {
+        "DIVISION": "BEN-Central",
+        "BU": "BE-North",
+        "COUNTRY": "US",
+        "OFFICE NAME": "Rochester",
+        "STATE / PROVINCE": "New York",
+        "MAIN PHONE": "1.585.288.5590",
+        "ADDRESS": "300 Trolley Boulevard\nRochester, NY 14606",
+        "Latitude": 43.17182200000001,
+        "Longitude": -77.68166169999999,
+        "Last Synced Address": "",
+        "On Connect": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -78.88336149999999,
+          42.8819752
+        ]
+      },
+      "properties": {
+        "DIVISION": "BEN-Central",
+        "BU": "BE-North",
+        "COUNTRY": "US",
+        "OFFICE NAME": "Buffalo",
+        "STATE / PROVINCE": "New York",
+        "MAIN PHONE": "716.845.5092",
+        "ADDRESS": "60 Lakefront Boulevard, Suite 320\nBuffalo, NY 14202",
+        "Latitude": 42.8819752,
+        "Longitude": -78.88336149999999,
+        "Last Synced Address": "",
+        "On Connect": ""
+      }
     }
   ]
 }
