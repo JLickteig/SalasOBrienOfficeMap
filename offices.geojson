@@ -2369,29 +2369,6 @@
         "Last Synced Address": "",
         "On Connect": ""
       }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -115.1391009,
-          36.171563
-        ]
-      },
-      "properties": {
-        "DIVISION": "Test",
-        "BU": "Test",
-        "COUNTRY": "US",
-        "OFFICE NAME": "Las Vegas",
-        "STATE / PROVINCE": "Nevada",
-        "MAIN PHONE": "1.234.546.7890",
-        "ADDRESS": "Las Vegas, NV",
-        "Latitude": 36.171563,
-        "Longitude": -115.1391009,
-        "Last Synced Address": "",
-        "On Connect": ""
-      }
     }
   ]
 }
