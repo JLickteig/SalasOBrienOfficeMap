@@ -2369,6 +2369,75 @@
         "Last Synced Address": "",
         "On Connect": ""
       }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.2647829,
+          43.6598352
+        ]
+      },
+      "properties": {
+        "DIVISION": "BE-North",
+        "BU": "New England",
+        "COUNTRY": "US",
+        "OFFICE NAME": "Portland",
+        "STATE / PROVINCE": "Maine",
+        "MAIN PHONE": "1.617.494.1464",
+        "ADDRESS": "82 Hanover Street, Suite 2\nPortland, ME 04101",
+        "Latitude": 43.6598352,
+        "Longitude": -70.2647829,
+        "Last Synced Address": "",
+        "On Connect": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.47250679999999,
+          43.5269235
+        ]
+      },
+      "properties": {
+        "DIVISION": "BE-North",
+        "BU": "New England",
+        "COUNTRY": "US",
+        "OFFICE NAME": "Laconia",
+        "STATE / PROVINCE": "New Hampshire",
+        "MAIN PHONE": "1.617.494.1464",
+        "ADDRESS": "71 Water Street\nLaconia, NH 03246",
+        "Latitude": 43.5269235,
+        "Longitude": -71.47250679999999,
+        "Last Synced Address": "",
+        "On Connect": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.0564019,
+          42.3563066
+        ]
+      },
+      "properties": {
+        "DIVISION": "BE-North",
+        "BU": "New England",
+        "COUNTRY": "US",
+        "OFFICE NAME": "Boston",
+        "STATE / PROVINCE": "Massachusetts",
+        "MAIN PHONE": "1.617.494.1464",
+        "ADDRESS": "24 Federal Street, 3rd Floor\nBoston, MA 02110",
+        "Latitude": 42.3563066,
+        "Longitude": -71.0564019,
+        "Last Synced Address": "",
+        "On Connect": ""
+      }
     }
   ]
 }
